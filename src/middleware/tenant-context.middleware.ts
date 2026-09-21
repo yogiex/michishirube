@@ -1,21 +1,55 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
-import { NextFunction, Request, Response } from 'express';
+import { Injectable, type NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
+import { ResolveTenantUseCase } from '@/core/tenant/application/resolve-tenant.usecase.js';
+import { tenantIdToString } from '@/core/tenant/domain/tenant-id.vo.js';
+import { RequestContextHolder } from '@/shared/context/request-context.js';
 
 export const TENANT_ID_HEADER = 'x-tenant-id';
+const MAX_HEADER_LENGTH = 64;
+const IPV4_PATTERN = /^\d{1,3}(\.\d{1,3}){3}$/;
 
-/**
- * Menyelesaikan tenant dari header `X-Tenant-ID`.
- * Resolusi penuh (JWT claim → subdomain → header) menyusul bersama core/tenant.
- */
 @Injectable()
 export class TenantContextMiddleware implements NestMiddleware {
-  use(req: Request, _res: Response, next: NextFunction): void {
-    const header = req.headers[TENANT_ID_HEADER];
-    const tenantId = Array.isArray(header) ? undefined : header;
+  constructor(private readonly resolveTenant: ResolveTenantUseCase) {}
 
-    if (tenantId && String(tenantId).length > 0) {
-      req.tenantId = String(tenantId);
-    }
-    next();
+  async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
+    const subdomain = this.extractSubdomain(this.extractHostname(req));
+    const headerTenantId = this.extractHeader(req);
+    const requestId = req.requestId ?? 'unknown';
+
+    await RequestContextHolder.run({ requestId, startedAt: Date.now() }, async () => {
+      try {
+        const result = await this.resolveTenant.execute({ subdomain, headerTenantId });
+        const tenantId = tenantIdToString(result.tenantId);
+        req.tenantId = tenantId;
+        RequestContextHolder.setTenantId(tenantId);
+        next();
+      } catch (error) {
+        next(error);
+      }
+    });
+  }
+
+  private extractHostname(req: Request): string | undefined {
+    const host = req.headers.host ?? req.hostname;
+    if (typeof host !== 'string' || host.length === 0) return undefined;
+    const withoutPort = host.startsWith('[') ? host : (host.split(':')[0] ?? host);
+    return withoutPort.toLowerCase();
+  }
+
+  private extractSubdomain(hostname: string | undefined): string | undefined {
+    if (!hostname || hostname === 'localhost' || hostname.startsWith('[')) return undefined;
+    if (IPV4_PATTERN.test(hostname)) return undefined;
+
+    const parts = hostname.split('.');
+    if (parts.length < 3) return undefined;
+    const first = parts[0];
+    return first && first.length > 0 ? first : undefined;
+  }
+
+  private extractHeader(req: Request): string | undefined {
+    const raw = req.headers[TENANT_ID_HEADER];
+    if (typeof raw !== 'string') return undefined;
+    return raw.length > 0 && raw.length <= MAX_HEADER_LENGTH ? raw : undefined;
   }
 }

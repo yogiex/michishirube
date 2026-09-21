@@ -1,0 +1,18 @@
+tenants:
+  - id: t_001
+    slug: acme
+    name: Acme Corp
+    status: active
+    tier: enterprise
+
+  - id: t_002
+    slug: beta
+    name: Beta Inc
+    status: active
+    tier: pro
+
+  - id: t_003
+    slug: gamma
+    name: Gamma LLC
+    status: suspended
+    tier: free
