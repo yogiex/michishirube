@@ -95,11 +95,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   }
 
   private resolveRequestId(req: RequestWithContext): string {
-    return (
-      req.requestId ||
-      (req.headers?.['x-request-id'] as string) ||
-      'unknown'
-    );
+    return req.requestId || (req.headers?.['x-request-id'] as string) || 'unknown';
   }
 
   private resolveTraceId(req: RequestWithContext): string | undefined {
@@ -165,11 +161,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
   }
 
-  private logDomainError(
-    err: DomainError,
-    dto: ProblemDetailsDto,
-    req: RequestWithContext,
-  ): void {
+  private logDomainError(err: DomainError, dto: ProblemDetailsDto, req: RequestWithContext): void {
     const ctx = { ...this.baseLog(dto, req), detail: dto.detail };
     if (dto.status >= 500) {
       this.logger.error({ ...ctx, cause: err.cause }, err.message, err.stack);
@@ -191,11 +183,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
   }
 
-  private logUnknown(
-    err: unknown,
-    dto: ProblemDetailsDto,
-    req: RequestWithContext,
-  ): void {
+  private logUnknown(err: unknown, dto: ProblemDetailsDto, req: RequestWithContext): void {
     const ctx = this.baseLog(dto, req);
     if (err instanceof Error) {
       this.logger.error(ctx, err.message, err.stack);

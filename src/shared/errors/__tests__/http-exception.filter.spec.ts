@@ -53,7 +53,10 @@ describe('GlobalExceptionFilter', () => {
     const req = { originalUrl: '/api/v1/orders', method: 'POST', requestId: 'req-1' };
     const res = makeRes();
 
-    filter.catch(new RateLimitExceededError('Too many requests', { retryAfter: 30 }), makeHost(req, res));
+    filter.catch(
+      new RateLimitExceededError('Too many requests', { retryAfter: 30 }),
+      makeHost(req, res),
+    );
 
     expect(res.statusCode).toBe(429);
     expect(res.body.code).toBe('GW_RATE_LIMIT_EXCEEDED');

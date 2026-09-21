@@ -1,9 +1,9 @@
 # ADR-0003: Redis as Only State Store
 
-| Field | Value |
-|---|---|
-| Status | Accepted |
-| Tanggal | 2026-09-21 |
+| Field   | Value                |
+| ------- | -------------------- |
+| Status  | Accepted             |
+| Tanggal | 2026-09-21           |
 | Decider | Platform Engineering |
 
 ---
@@ -42,6 +42,7 @@ Pilihan state storage:
 ## Consequences
 
 ### Positif
+
 - **Stateless pods**: gateway bisa di-scale horizontal tanpa state migration.
 - **Single dependency**: hanya perlu operasional Redis, bukan 3+ storage.
 - **Atomic operations**: Redis SETNX, INCR, pipeline cocok untuk rate limit & idempotency.
@@ -49,11 +50,13 @@ Pilihan state storage:
 - **Shared state**: semua pod melihat data yang sama.
 
 ### Negatif
+
 - **Single point of failure**: Redis down → rate limit & idempotency tidak berfungsi.
 - **Latency**: setiap request melibatkan Redis call (rate limit check).
 - **Memory limit**: Redis memory terbatas, tidak cocok untuk cache raksasa.
 
 ### Mitigasi
+
 - **Redis HA**: minimal Redis Sentinel, idealnya Redis Cluster.
 - **Fail-open** untuk rate limit: jika Redis down, allow request (toleransi false negative).
 - **Fail-closed** untuk idempotency: jika Redis down, reject duplicate request (toleransi false positive lebih baik daripada double-process).
@@ -64,21 +67,21 @@ Pilihan state storage:
 
 ## State Detail
 
-| State | Redis Structure | TTL | Failure Mode |
-|---|---|---|---|
-| Rate limit | `RATE:{tenant}:{window}` (sorted set) | window | Fail-open |
-| Idempotency | `IDEMP:{key}` (string, value=response) | 24h | Fail-closed |
-| Response cache | `CACHE:{key}` (string, value=body) | configurable | Skip cache |
-| Circuit state | `CIRCUIT:{service}` (hash) + pub/sub | - | Local fallback |
-| Route config | `ROUTE:{tenant}:{path}` (hash) | - | Fallback ke YAML |
+| State          | Redis Structure                        | TTL          | Failure Mode     |
+| -------------- | -------------------------------------- | ------------ | ---------------- |
+| Rate limit     | `RATE:{tenant}:{window}` (sorted set)  | window       | Fail-open        |
+| Idempotency    | `IDEMP:{key}` (string, value=response) | 24h          | Fail-closed      |
+| Response cache | `CACHE:{key}` (string, value=body)     | configurable | Skip cache       |
+| Circuit state  | `CIRCUIT:{service}` (hash) + pub/sub   | -            | Local fallback   |
+| Route config   | `ROUTE:{tenant}:{path}` (hash)         | -            | Fallback ke YAML |
 
 ---
 
 ## Alternatives yang Ditolak
 
-| Alternatives | Alasan Ditolak |
-|---|---|
-| PostgreSQL untuk rate limit | Overkill untuk counter, latency lebih tinggi |
-| In-memory (per-pod) | Tidak shared, rate limit per-pod tidak akurat |
-| Memcached | Tidak ada atomic ops, tidak ada pub/sub |
-| File-based untuk semua state | Tidak distributed, race condition |
+| Alternatives                 | Alasan Ditolak                                |
+| ---------------------------- | --------------------------------------------- |
+| PostgreSQL untuk rate limit  | Overkill untuk counter, latency lebih tinggi  |
+| In-memory (per-pod)          | Tidak shared, rate limit per-pod tidak akurat |
+| Memcached                    | Tidak ada atomic ops, tidak ada pub/sub       |
+| File-based untuk semua state | Tidak distributed, race condition             |

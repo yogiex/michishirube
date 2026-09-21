@@ -20,6 +20,10 @@ pre-commit:
     # ─── Format check (hanya file staged) ────────────
     prettier:
       glob: '*.{ts,js,mjs,cjs,json,yaml,yml,md}'
+      exclude:
+        - 'pnpm-lock.yaml'
+        - 'package-lock.json'
+        - 'yarn.lock'
       run: npx prettier --check {staged_files}
       stage_fixed: true
       fail_text: '❌ Prettier: jalankan `pnpm format` lalu commit ulang'
@@ -55,7 +59,7 @@ pre-commit:
     # ─── Cegah commit file yang tidak seharusnya ────
     no-forbidden-files:
       run: |
-        FORBIDDEN=$(echo "{staged_files}" | tr ' ' '\n' | grep -E '(^|/)(\.env$|\.env\.development$|\.env\.production$|\.env\.local$|node_modules/|dist/|coverage/|\.tsbuildinfo$)' || true)
+        FORBIDDEN=$(echo "{staged_files}" | tr ' ' '\n' | grep -E '(^|/)(\.env$|\.env\.development$|\.env\.production$|\.env\.local$|node_modules/|dist/|coverage/|\.tsbuildinfo$|checkpoint-report\.txt$)' || true)
         if [ -n "$FORBIDDEN" ]; then
           echo "❌ File berikut tidak boleh di-commit:"
           echo "$FORBIDDEN"

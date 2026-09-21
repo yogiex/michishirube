@@ -1,11 +1,12 @@
 # Project Structure
+
 ## API Gateway NestJS — Hexagonal + Modular Monolith
 
-| Field | Value |
-|---|---|
-| Versi | 1.0.0 |
+| Field      | Value                                           |
+| ---------- | ----------------------------------------------- |
+| Versi      | 1.0.0                                           |
 | Pendekatan | Hexagonal (Ports & Adapters) + Modular Monolith |
-| Alasan | Gateway bukan domain bisnis; DDD penuh overkill |
+| Alasan     | Gateway bukan domain bisnis; DDD penuh overkill |
 
 ---
 
@@ -24,6 +25,7 @@ Karena itu:
   ringan): routing, auth, rate-limit, idempotency, circuit-breaker, observability.
 
 Tujuan:
+
 - Testable tanpa infra (mock adapter).
 - Bisa ganti Redis → Memcached, HTTP → gRPC, tanpa mengubah core.
 - Modul bisa diekstrak jadi service terpisah jika perlu.
@@ -237,6 +239,7 @@ shared/  ←  dipakai oleh semua, tanpa dependensi ke core/modules
 ```
 
 Aturan keras:
+
 1. `core/` **tidak boleh** import NestJS HTTP, Redis, Prisma, dsb.
    Core hanya berisi pure TypeScript + interface (Port).
 2. `infrastructure/` mengimplementasikan Port dari `core/`.
@@ -288,17 +291,17 @@ HTTP Request
 
 ## 5. Konvensi Penamaan
 
-| Tipe | Contoh | Keterangan |
-|---|---|---|
-| Use Case | `ResolveRouteUseCase` | Satu file satu use case |
-| Port | `RouteRepositoryPort` | Interface di `core/*/domain` |
-| Adapter | `RedisRouteRepositoryAdapter` | Implementasi Port |
-| Entity | `Tenant`, `Route` | Domain object |
-| Value Object | `TenantId`, `Upstream` | Immutable |
-| DTO | `ProxyRequestDto` | Hanya di boundary HTTP |
-| Guard | `AuthGuard` | NestJS guard |
-| Interceptor | `IdempotencyInterceptor` | NestJS interceptor |
-| Module | `RoutingModule` | NestJS module |
+| Tipe         | Contoh                        | Keterangan                   |
+| ------------ | ----------------------------- | ---------------------------- |
+| Use Case     | `ResolveRouteUseCase`         | Satu file satu use case      |
+| Port         | `RouteRepositoryPort`         | Interface di `core/*/domain` |
+| Adapter      | `RedisRouteRepositoryAdapter` | Implementasi Port            |
+| Entity       | `Tenant`, `Route`             | Domain object                |
+| Value Object | `TenantId`, `Upstream`        | Immutable                    |
+| DTO          | `ProxyRequestDto`             | Hanya di boundary HTTP       |
+| Guard        | `AuthGuard`                   | NestJS guard                 |
+| Interceptor  | `IdempotencyInterceptor`      | NestJS interceptor           |
+| Module       | `RoutingModule`               | NestJS module                |
 
 File naming: `kebab-case` dengan suffix tipe (`*.usecase.ts`, `*.port.ts`,
 `*.adapter.ts`, `*.guard.ts`, `*.module.ts`).
@@ -307,14 +310,15 @@ File naming: `kebab-case` dengan suffix tipe (`*.usecase.ts`, `*.port.ts`,
 
 ## 6. Testing Strategy
 
-| Level | Lokasi | Fokus |
-|---|---|---|
-| Unit | `test/unit/` | Use Case & Value Object (mock Port) |
-| Integration | `test/integration/` | Adapter Redis, JWT, HTTP proxy |
-| E2E | `test/e2e/` | Alur request penuh via supertest |
-| Load | `scripts/load-test.sh` | autocannon / k6 |
+| Level       | Lokasi                 | Fokus                               |
+| ----------- | ---------------------- | ----------------------------------- |
+| Unit        | `test/unit/`           | Use Case & Value Object (mock Port) |
+| Integration | `test/integration/`    | Adapter Redis, JWT, HTTP proxy      |
+| E2E         | `test/e2e/`            | Alur request penuh via supertest    |
+| Load        | `scripts/load-test.sh` | autocannon / k6                     |
 
 Target coverage:
+
 - `core/` ≥ 90%
 - `infrastructure/` ≥ 70%
 - `modules/` ≥ 70%
@@ -323,18 +327,18 @@ Target coverage:
 
 ## 7. Dependency Eksternal yang Disetujui
 
-| Kebutuhan | Library | Alasan |
-|---|---|---|
-| Framework | `@nestjs/*` v12 | Standar |
-| Validasi env | `zod` | Standard Schema di NestJS v12 |
-| Redis | `ioredis` | Stabil, cluster-ready |
-| JWT | `jose` | Modern, JWKS support |
-| Circuit Breaker | `cockatiel` | Ringan, policy-based |
-| Logging | `pino` | Cepat, JSON native |
-| Metrics | `prom-client` | Standar Prometheus |
-| Tracing | `@opentelemetry/*` | Standar industri |
-| HTTP Client | `undici` | Cepat, native Node |
-| Test | `vitest` + `supertest` | Cepat, ESM-friendly |
+| Kebutuhan       | Library                | Alasan                        |
+| --------------- | ---------------------- | ----------------------------- |
+| Framework       | `@nestjs/*` v12        | Standar                       |
+| Validasi env    | `zod`                  | Standard Schema di NestJS v12 |
+| Redis           | `ioredis`              | Stabil, cluster-ready         |
+| JWT             | `jose`                 | Modern, JWKS support          |
+| Circuit Breaker | `cockatiel`            | Ringan, policy-based          |
+| Logging         | `pino`                 | Cepat, JSON native            |
+| Metrics         | `prom-client`          | Standar Prometheus            |
+| Tracing         | `@opentelemetry/*`     | Standar industri              |
+| HTTP Client     | `undici`               | Cepat, native Node            |
+| Test            | `vitest` + `supertest` | Cepat, ESM-friendly           |
 
 Setiap penambahan dependency baru **wajib** melalui ADR.
 

@@ -1,9 +1,7 @@
 import { z } from 'zod';
 
 export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   SERVICE_NAME: z.string().default('api-gateway'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -43,9 +41,7 @@ export function validateEnv(config: Record<string, unknown>): Env {
       parsed.data.LOG_LEVEL === 'debug',
     ];
     if (forbidden.some(Boolean)) {
-      throw new Error(
-        'Production config tidak boleh pakai nilai development',
-      );
+      throw new Error('Production config tidak boleh pakai nilai development');
     }
   }
 

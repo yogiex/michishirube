@@ -1,11 +1,11 @@
 # AGENTS.md — Aturan Penulisan Kode untuk AI Agent
 
-| Field | Value |
-|---|---|
-| Versi | 1.0.0 |
-| Berlaku untuk | Semua AI agent yang menulis kode di repo ini |
-| Wajib dibaca sebelum | Menulis, mengubah, atau me-review kode |
-| Dokumen Terkait | `PRD.md`, `ARCHITECTURE.md`, `STRUCTURE.md`, `TECHSTACK.md`, `RESILIENCE.md` |
+| Field                | Value                                                                        |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Versi                | 1.0.0                                                                        |
+| Berlaku untuk        | Semua AI agent yang menulis kode di repo ini                                 |
+| Wajib dibaca sebelum | Menulis, mengubah, atau me-review kode                                       |
+| Dokumen Terkait      | `PRD.md`, `ARCHITECTURE.md`, `STRUCTURE.md`, `TECHSTACK.md`, `RESILIENCE.md` |
 
 ---
 
@@ -33,14 +33,14 @@ modules/ ─────► core/ ◄───── infrastructure/
    shared/ (dipakai semua, tidak import balik)
 ```
 
-| Layer | Boleh import | Dilarang import |
-|---|---|---|
-| `core/*/domain` | — (pure TS saja) | NestJS, Redis, HTTP, Zod |
-| `core/*/application` | `core/*/domain` | NestJS, infrastructure |
-| `infrastructure/*` | `core/*/domain` (implement Port) | `core/*/application`, `modules` |
-| `modules/*` | `core/*/application`, `core/*/domain` | `infrastructure` langsung |
-| `shared/*` | — | `core`, `modules`, `infrastructure` |
-| `guards/*`, `interceptors/*`, `middleware/*` | `core/*`, `shared/*` | — |
+| Layer                                        | Boleh import                          | Dilarang import                     |
+| -------------------------------------------- | ------------------------------------- | ----------------------------------- |
+| `core/*/domain`                              | — (pure TS saja)                      | NestJS, Redis, HTTP, Zod            |
+| `core/*/application`                         | `core/*/domain`                       | NestJS, infrastructure              |
+| `infrastructure/*`                           | `core/*/domain` (implement Port)      | `core/*/application`, `modules`     |
+| `modules/*`                                  | `core/*/application`, `core/*/domain` | `infrastructure` langsung           |
+| `shared/*`                                   | —                                     | `core`, `modules`, `infrastructure` |
+| `guards/*`, `interceptors/*`, `middleware/*` | `core/*`, `shared/*`                  | —                                   |
 
 **Pelanggaran = tolak PR.**
 
@@ -62,7 +62,11 @@ core/<context>/
 ```ts
 // ✅ BENAR — core hanya tahu interface
 export interface RateLimiterPort {
-  check(key: string, limit: number, windowSec: number): Promise<RateLimitResult>;
+  check(
+    key: string,
+    limit: number,
+    windowSec: number,
+  ): Promise<RateLimitResult>;
 }
 
 // ❌ SALAH — core import Redis
@@ -86,18 +90,19 @@ Gateway hanya akses **Redis** dan **file YAML**. DB adalah tanggung jawab upstre
 
 ## 2. Aturan Naming
 
-| Tipe | Format | Contoh |
-|---|---|---|
-| File | `kebab-case` + suffix | `resolve-route.usecase.ts` |
-| Class | `PascalCase` | `ResolveRouteUseCase` |
-| Interface | `PascalCase` + suffix | `RouteRepositoryPort` |
-| Type | `PascalCase` | `RouteConfig` |
-| Function | `camelCase` | `resolveRoute` |
-| Constant | `SCREAMING_SNAKE` | `DEFAULT_TIMEOUT_MS` |
-| Enum | `PascalCase` + `SCREAMING` | `ErrorCode.AUTH_MISSING` |
-| Test | `*.spec.ts` | `resolve-route.usecase.spec.ts` |
+| Tipe      | Format                     | Contoh                          |
+| --------- | -------------------------- | ------------------------------- |
+| File      | `kebab-case` + suffix      | `resolve-route.usecase.ts`      |
+| Class     | `PascalCase`               | `ResolveRouteUseCase`           |
+| Interface | `PascalCase` + suffix      | `RouteRepositoryPort`           |
+| Type      | `PascalCase`               | `RouteConfig`                   |
+| Function  | `camelCase`                | `resolveRoute`                  |
+| Constant  | `SCREAMING_SNAKE`          | `DEFAULT_TIMEOUT_MS`            |
+| Enum      | `PascalCase` + `SCREAMING` | `ErrorCode.AUTH_MISSING`        |
+| Test      | `*.spec.ts`                | `resolve-route.usecase.spec.ts` |
 
 Suffix wajib:
+
 - `.usecase.ts` — use case
 - `.port.ts` — interface port
 - `.adapter.ts` — implementasi port
@@ -119,6 +124,7 @@ Suffix wajib:
 ### 3.1 Strict Mode Wajib
 
 `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -153,7 +159,10 @@ const val = map.get(key)!;
 someCall();
 
 // ❌ enum runtime (kecuali string enum untuk error code)
-enum Status { Active, Inactive }
+enum Status {
+  Active,
+  Inactive,
+}
 
 // ❌ default export
 export default class Foo {}
@@ -206,9 +215,9 @@ export type Result<T, E = Error> =
   | { readonly ok: false; readonly error: E };
 
 // ✅ Adapter generic
-export class RedisRepositoryAdapter<TEntity extends { id: string }>
-  implements RepositoryPort<TEntity>
-{
+export class RedisRepositoryAdapter<
+  TEntity extends { id: string },
+> implements RepositoryPort<TEntity> {
   constructor(
     private readonly redis: Redis,
     private readonly prefix: string,
@@ -240,6 +249,7 @@ export interface Codec<T> {
 ```
 
 **Aturan generic:**
+
 1. Gunakan `<T>` untuk tipe utama, `<K, V>` untuk map, `<TInput, TOutput>` untuk transform.
 2. Selalu beri constraint jika perlu: `<T extends object>`.
 3. Jangan pakai generic kalau tidak ada variasi tipe — over-engineering.
@@ -256,9 +266,12 @@ type RouteResult =
 
 function handle(result: RouteResult) {
   switch (result.kind) {
-    case 'found': return result.route;
-    case 'not_found': return null;
-    case 'disabled': return result.reason;
+    case 'found':
+      return result.route;
+    case 'not_found':
+      return null;
+    case 'disabled':
+      return result.reason;
   }
 }
 ```
@@ -279,18 +292,18 @@ async function findUser(id: string): Promise<Result<User, 'NOT_FOUND'>> {}
 
 ### 4.1 Prinsip Wajib
 
-| # | Prinsip | Aturan |
-|---|---|---|
-| 1 | **Input validation** | Semua input dari luar = `unknown`, validasi pakai Zod |
-| 2 | **Output sanitization** | Jangan bocorkan stack trace, SQL, URL internal |
-| 3 | **Least privilege** | Setiap fungsi hanya akses yang perlu |
-| 4 | **Fail-closed** | Default tolak jika ragu (kecuali rate limit fail-open) |
-| 5 | **Defense in depth** | Multiple layer validasi |
-| 6 | **No secret in code/log** | Secret hanya dari env / secret manager |
-| 7 | **No implicit trust** | Header, query, body = tidak dipercaya |
-| 8 | **Constant-time compare** | Untuk API key, token, signature |
-| 9 | **Rate limit everything** | Tidak ada endpoint tanpa rate limit |
-| 10 | **Audit everything** | Setiap akses tercatat |
+| #   | Prinsip                   | Aturan                                                 |
+| --- | ------------------------- | ------------------------------------------------------ |
+| 1   | **Input validation**      | Semua input dari luar = `unknown`, validasi pakai Zod  |
+| 2   | **Output sanitization**   | Jangan bocorkan stack trace, SQL, URL internal         |
+| 3   | **Least privilege**       | Setiap fungsi hanya akses yang perlu                   |
+| 4   | **Fail-closed**           | Default tolak jika ragu (kecuali rate limit fail-open) |
+| 5   | **Defense in depth**      | Multiple layer validasi                                |
+| 6   | **No secret in code/log** | Secret hanya dari env / secret manager                 |
+| 7   | **No implicit trust**     | Header, query, body = tidak dipercaya                  |
+| 8   | **Constant-time compare** | Untuk API key, token, signature                        |
+| 9   | **Rate limit everything** | Tidak ada endpoint tanpa rate limit                    |
+| 10  | **Audit everything**      | Setiap akses tercatat                                  |
 
 ### 4.2 Validasi Input Wajib dengan Zod
 
@@ -299,10 +312,15 @@ async function findUser(id: string): Promise<Result<User, 'NOT_FOUND'>> {}
 import { z } from 'zod';
 
 const CreateOrderSchema = z.object({
-  items: z.array(z.object({
-    sku: z.string().min(1).max(64),
-    qty: z.number().int().positive().max(1000),
-  })).min(1).max(100),
+  items: z
+    .array(
+      z.object({
+        sku: z.string().min(1).max(64),
+        qty: z.number().int().positive().max(1000),
+      }),
+    )
+    .min(1)
+    .max(100),
   idempotencyKey: z.string().uuid(),
 });
 
@@ -352,11 +370,14 @@ if (!tenantId || !isValidTenantId(tenantId)) {
 logger.info({ user, token, password }, 'Login');
 
 // ✅ BENAR
-logger.info({
-  userId: user.id,
-  tenantId: user.tenantId,
-  // token, password: TIDAK DILOG
-}, 'Login');
+logger.info(
+  {
+    userId: user.id,
+    tenantId: user.tenantId,
+    // token, password: TIDAK DILOG
+  },
+  'Login',
+);
 ```
 
 **Field yang dilarang di log:**
@@ -367,12 +388,22 @@ logger.info({
 
 ```ts
 const FORBIDDEN_HEADERS = new Set([
-  'authorization', 'cookie', 'x-tenant-id', 'x-user-id',
-  'x-forwarded-for', 'x-forwarded-host', 'x-real-ip',
-  'host', 'connection', 'content-length', 'transfer-encoding',
+  'authorization',
+  'cookie',
+  'x-tenant-id',
+  'x-user-id',
+  'x-forwarded-for',
+  'x-forwarded-host',
+  'x-real-ip',
+  'host',
+  'connection',
+  'content-length',
+  'transfer-encoding',
 ]);
 
-function sanitizeHeaders(headers: Record<string, string>): Record<string, string> {
+function sanitizeHeaders(
+  headers: Record<string, string>,
+): Record<string, string> {
   const clean: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
     if (FORBIDDEN_HEADERS.has(key.toLowerCase())) continue;
@@ -388,7 +419,8 @@ function sanitizeHeaders(headers: Record<string, string>): Record<string, string
 import { timingSafeEqual } from 'node:crypto';
 
 // ❌ SALAH — timing attack
-if (apiKey === storedKey) {}
+if (apiKey === storedKey) {
+}
 
 // ✅ BENAR
 function safeCompare(a: string, b: string): boolean {
@@ -407,7 +439,7 @@ throw new Error(`DB connection failed at 10.0.0.5:5432`);
 
 // ✅ BENAR — pakai error code terstandar
 throw new InternalDependencyError('Dependency unavailable', {
-  meta: { dependency: 'redis' },  // meta internal, tidak dikirim ke klien
+  meta: { dependency: 'redis' }, // meta internal, tidak dikirim ke klien
 });
 ```
 
@@ -467,6 +499,7 @@ throw new RouteNotFoundError('Route tidak ditemukan', {
 ### 5.2 Error Code Wajib dari Katalog
 
 Semua error code **harus** ada di `src/shared/errors/error-codes.ts`. Jika perlu kode baru:
+
 1. Tambah ke `ErrorCode` enum
 2. Tambah ke `ERROR_CATALOG`
 3. Buat class di `gateway-error.ts`
@@ -476,10 +509,16 @@ Semua error code **harus** ada di `src/shared/errors/error-codes.ts`. Jika perlu
 
 ```ts
 // ❌ SALAH
-try { await foo(); } catch {}
+try {
+  await foo();
+} catch {}
 
 // ❌ SALAH
-try { await foo(); } catch (e) { console.log(e); }
+try {
+  await foo();
+} catch (e) {
+  console.log(e);
+}
 
 // ✅ BENAR
 try {
@@ -493,9 +532,9 @@ try {
 
 ```ts
 throw new UpstreamTimeoutError('Upstream timeout setelah 5s', {
-  detail: 'Request ke order-svc timeout',   // dikirim ke klien
-  meta: { upstream: 'order-svc', durationMs: 5000 },  // internal saja
-  cause: originalError,  // untuk logging
+  detail: 'Request ke order-svc timeout', // dikirim ke klien
+  meta: { upstream: 'order-svc', durationMs: 5000 }, // internal saja
+  cause: originalError, // untuk logging
 });
 ```
 
@@ -530,13 +569,13 @@ this.logger.log({ userId, tenantId }, 'User logged in');
 
 ### 6.3 Level Log
 
-| Level | Kapan |
-|---|---|
-| `error` | 5xx, exception tak terduga |
-| `warn` | 4xx, degradasi, fallback |
-| `info` | Request sukses penting, state change |
-| `debug` | Detail untuk debugging (dev only) |
-| `trace` | Sangat detail (jarang dipakai) |
+| Level   | Kapan                                |
+| ------- | ------------------------------------ |
+| `error` | 5xx, exception tak terduga           |
+| `warn`  | 4xx, degradasi, fallback             |
+| `info`  | Request sukses penting, state change |
+| `debug` | Detail untuk debugging (dev only)    |
+| `trace` | Sangat detail (jarang dipakai)       |
 
 ---
 
@@ -544,11 +583,11 @@ this.logger.log({ userId, tenantId }, 'User logged in');
 
 ### 7.1 Coverage Minimum
 
-| Layer | Coverage |
-|---|---|
-| `core/` | ≥ 90% |
-| `infrastructure/` | ≥ 70% |
-| `modules/` | ≥ 70% |
+| Layer             | Coverage |
+| ----------------- | -------- |
+| `core/`           | ≥ 90%    |
+| `infrastructure/` | ≥ 70%    |
+| `modules/`        | ≥ 70%    |
 
 ### 7.2 Setiap Use Case Wajib Punya Test
 
@@ -573,6 +612,7 @@ describe('ResolveRouteUseCase', () => {
 ### 7.3 Test Security
 
 Setiap use case **wajib** punya test untuk:
+
 - Input invalid → error yang tepat
 - Input berbahaya (SQL injection, XSS, path traversal) → ditolak
 - Boundary (empty, max length, negative)
@@ -610,11 +650,13 @@ chore(deps): upgrade NestJS to 12.0.1
 ## 9. Checklist Sebelum Kirim Kode
 
 ### Arsitektur
+
 - [ ] Dependency sesuai aturan Hexagonal
 - [ ] Core tidak import infra
 - [ ] Setiap context punya domain/application/adapter
 
 ### TypeScript
+
 - [ ] Tidak ada `any`
 - [ ] Tidak ada `as unknown as`
 - [ ] Generic dipakai untuk abstraksi
@@ -622,6 +664,7 @@ chore(deps): upgrade NestJS to 12.0.1
 - [ ] `readonly` untuk immutable
 
 ### Security
+
 - [ ] Input divalidasi dengan Zod
 - [ ] Output tidak bocorkan internal
 - [ ] Tidak ada secret di code/log
@@ -631,16 +674,19 @@ chore(deps): upgrade NestJS to 12.0.1
 - [ ] Rate limit untuk semua route
 
 ### Error
+
 - [ ] Pakai DomainError, bukan Error generik
 - [ ] Error code dari katalog
 - [ ] Tidak catch-and-silent
 
 ### Logging
+
 - [ ] Pakai Logger, bukan console
 - [ ] Tidak log secret/PII
 - [ ] Field wajib lengkap
 
 ### Test
+
 - [ ] Use case punya test
 - [ ] Security test ada
 - [ ] Coverage memenuhi minimum
@@ -649,23 +695,23 @@ chore(deps): upgrade NestJS to 12.0.1
 
 ## 10. Larangan Keras
 
-| # | Larangan | Alasan |
-|---|---|---|
-| 1 | `any` | Hilangkan type safety |
-| 2 | `as unknown as` | Bypass type system |
-| 3 | `console.log` | Bukan structured log |
-| 4 | Import infra di core | Langgar Hexagonal |
-| 5 | Akses DB di gateway | Langgar boundary |
-| 6 | `process.env` di luar config | Susah dilacak |
-| 7 | Secret hardcoded | Security |
-| 8 | `catch {}` kosong | Sembunyikan error |
-| 9 | Default export | Sulit di-refactor |
-| 10 | `enum` runtime | Kecuali string enum error code |
-| 11 | Mutasi parameter | Side effect |
-| 12 | Nested callback > 2 level | Susah dibaca |
-| 13 | Fungsi > 50 baris | Susah dites |
-| 14 | File > 300 baris | Pecah jadi modul |
-| 15 | `!` non-null assertion tanpa cek | Runtime error |
+| #   | Larangan                         | Alasan                         |
+| --- | -------------------------------- | ------------------------------ |
+| 1   | `any`                            | Hilangkan type safety          |
+| 2   | `as unknown as`                  | Bypass type system             |
+| 3   | `console.log`                    | Bukan structured log           |
+| 4   | Import infra di core             | Langgar Hexagonal              |
+| 5   | Akses DB di gateway              | Langgar boundary               |
+| 6   | `process.env` di luar config     | Susah dilacak                  |
+| 7   | Secret hardcoded                 | Security                       |
+| 8   | `catch {}` kosong                | Sembunyikan error              |
+| 9   | Default export                   | Sulit di-refactor              |
+| 10  | `enum` runtime                   | Kecuali string enum error code |
+| 11  | Mutasi parameter                 | Side effect                    |
+| 12  | Nested callback > 2 level        | Susah dibaca                   |
+| 13  | Fungsi > 50 baris                | Susah dites                    |
+| 14  | File > 300 baris                 | Pecah jadi modul               |
+| 15  | `!` non-null assertion tanpa cek | Runtime error                  |
 
 ---
 
@@ -699,7 +745,8 @@ export class ResolveRouteUseCase {
 
     const match = matches.find((r) => r.method === input.method);
     if (!match) return { kind: 'not_found' };
-    if (!match.enabled) return { kind: 'disabled', reason: match.disabledReason ?? 'unknown' };
+    if (!match.enabled)
+      return { kind: 'disabled', reason: match.disabledReason ?? 'unknown' };
 
     return { kind: 'found', route: match };
   }

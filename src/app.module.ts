@@ -6,12 +6,6 @@ import { MiddlewareModule } from './middleware/middleware.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
-  imports: [
-    ConfigModule,
-    LoggerModule,
-    RedisModule,
-    MiddlewareModule,
-    HealthModule,
-  ],
+  imports: [ConfigModule, LoggerModule, RedisModule, MiddlewareModule, HealthModule],
 })
 export class AppModule {}

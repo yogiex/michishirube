@@ -1,30 +1,30 @@
 # RULES.md — Aturan Clean Code & Error Handling
 
-| Field | Value |
-|---|---|
-| Versi | 1.0.0 |
-| Berlaku untuk | Setiap file yang ditulis di repo ini |
-| Dokumen Terkait | `AGENTS.md`, `ARCHITECTURE.md`, `RESILIENCE.md` |
-| Standar Error | RFC 7807 (Problem Details), RFC 9110 (HTTP Semantics) |
+| Field           | Value                                                 |
+| --------------- | ----------------------------------------------------- |
+| Versi           | 1.0.0                                                 |
+| Berlaku untuk   | Setiap file yang ditulis di repo ini                  |
+| Dokumen Terkait | `AGENTS.md`, `ARCHITECTURE.md`, `RESILIENCE.md`       |
+| Standar Error   | RFC 7807 (Problem Details), RFC 9110 (HTTP Semantics) |
 
 ---
 
 ## 1. Prinsip Clean Code
 
-| # | Prinsip | Aturan Praktis |
-|---|---|---|
-| 1 | **Single Responsibility** | 1 file = 1 tanggung jawab. 1 fungsi = 1 tugas. |
-| 2 | **Small is beautiful** | Fungsi ≤ 30 baris. File ≤ 200 baris. Class ≤ 150 baris. |
-| 3 | **Meaningful names** | Nama menjelaskan *apa*, bukan *bagaimana*. |
-| 4 | **No side effects** | Fungsi tidak mengubah parameter. |
-| 5 | **Immutability first** | `readonly`, `const`, hindari mutasi. |
-| 6 | **Explicit over implicit** | Tidak ada magic. Semua eksplisit. |
-| 7 | **Fail fast** | Validasi di awal, error di awal. |
-| 8 | **DRY** | Tidak ada duplikasi logika. |
-| 9 | **KISS** | Solusi paling sederhana yang benar. |
-| 10 | **YAGNI** | Jangan buat yang belum dibutuhkan. |
-| 11 | **Boy Scout Rule** | Tinggalkan kode lebih bersih dari sebelumnya. |
-| 12 | **Composition over inheritance** | Pakai komposisi, hindari extends. |
+| #   | Prinsip                          | Aturan Praktis                                          |
+| --- | -------------------------------- | ------------------------------------------------------- |
+| 1   | **Single Responsibility**        | 1 file = 1 tanggung jawab. 1 fungsi = 1 tugas.          |
+| 2   | **Small is beautiful**           | Fungsi ≤ 30 baris. File ≤ 200 baris. Class ≤ 150 baris. |
+| 3   | **Meaningful names**             | Nama menjelaskan _apa_, bukan _bagaimana_.              |
+| 4   | **No side effects**              | Fungsi tidak mengubah parameter.                        |
+| 5   | **Immutability first**           | `readonly`, `const`, hindari mutasi.                    |
+| 6   | **Explicit over implicit**       | Tidak ada magic. Semua eksplisit.                       |
+| 7   | **Fail fast**                    | Validasi di awal, error di awal.                        |
+| 8   | **DRY**                          | Tidak ada duplikasi logika.                             |
+| 9   | **KISS**                         | Solusi paling sederhana yang benar.                     |
+| 10  | **YAGNI**                        | Jangan buat yang belum dibutuhkan.                      |
+| 11  | **Boy Scout Rule**               | Tinggalkan kode lebih bersih dari sebelumnya.           |
+| 12  | **Composition over inheritance** | Pakai komposisi, hindari extends.                       |
 
 ---
 
@@ -53,7 +53,9 @@ import type { FastifyRequest } from 'fastify';
 const DEFAULT_TIMEOUT_MS = 5_000;
 
 // 3. Types & interfaces
-export interface ResolveRouteInput { /* ... */ }
+export interface ResolveRouteInput {
+  /* ... */
+}
 
 // 4. Class / function
 @Injectable()
@@ -65,16 +67,21 @@ export class ResolveRouteUseCase {
   constructor(private readonly routes: RouteRepositoryPort) {}
 
   // 4c. Public methods
-  async execute(input: ResolveRouteInput): Promise<ResolveRouteOutput> { /* ... */ }
+  async execute(input: ResolveRouteInput): Promise<ResolveRouteOutput> {
+    /* ... */
+  }
 
   // 4d. Private methods
-  private validate(input: ResolveRouteInput): void { /* ... */ }
+  private validate(input: ResolveRouteInput): void {
+    /* ... */
+  }
 }
 
 // 5. Named export only — TIDAK ada default export
 ```
 
 **Aturan:**
+
 - ✅ Named export saja
 - ✅ `import type` untuk type-only
 - ✅ Urutan import: built-in → external → internal
@@ -85,19 +92,20 @@ export class ResolveRouteUseCase {
 
 ## 3. Aturan Naming
 
-| Elemen | Format | Contoh | Larangan |
-|---|---|---|---|
-| File | `kebab-case.type.ts` | `resolve-route.usecase.ts` | `ResolveRoute.ts` |
-| Class | `PascalCase` | `ResolveRouteUseCase` | `resolveRoute` |
-| Interface | `PascalCase` + suffix | `RouteRepositoryPort` | `IRoute` |
-| Type | `PascalCase` | `RouteConfig` | `route_config` |
-| Function | `camelCase` + verb | `resolveRoute` | `routeResolver` |
-| Boolean | `is/has/can/should` | `isEnabled`, `hasAccess` | `enabled` |
-| Constant | `SCREAMING_SNAKE` | `DEFAULT_TIMEOUT_MS` | `defaultTimeout` |
-| Enum | `PascalCase` | `ErrorCode` | `ERROR_CODE` |
-| Private field | `#` atau `private` | `#cache` | `_cache` |
+| Elemen        | Format                | Contoh                     | Larangan          |
+| ------------- | --------------------- | -------------------------- | ----------------- |
+| File          | `kebab-case.type.ts`  | `resolve-route.usecase.ts` | `ResolveRoute.ts` |
+| Class         | `PascalCase`          | `ResolveRouteUseCase`      | `resolveRoute`    |
+| Interface     | `PascalCase` + suffix | `RouteRepositoryPort`      | `IRoute`          |
+| Type          | `PascalCase`          | `RouteConfig`              | `route_config`    |
+| Function      | `camelCase` + verb    | `resolveRoute`             | `routeResolver`   |
+| Boolean       | `is/has/can/should`   | `isEnabled`, `hasAccess`   | `enabled`         |
+| Constant      | `SCREAMING_SNAKE`     | `DEFAULT_TIMEOUT_MS`       | `defaultTimeout`  |
+| Enum          | `PascalCase`          | `ErrorCode`                | `ERROR_CODE`      |
+| Private field | `#` atau `private`    | `#cache`                   | `_cache`          |
 
 **Verb yang direkomendasikan:**
+
 - `get` / `find` — ambil data
 - `create` / `build` — buat baru
 - `update` / `apply` — ubah
@@ -113,19 +121,24 @@ export class ResolveRouteUseCase {
 
 ### 4.1 Ukuran & Kompleksitas
 
-| Metrik | Batas |
-|---|---|
-| Baris per fungsi | ≤ 30 |
-| Parameter | ≤ 3 (lebih → pakai object) |
-| Cyclomatic complexity | ≤ 10 |
-| Nesting level | ≤ 3 |
-| Return statement | ≤ 5 |
+| Metrik                | Batas                      |
+| --------------------- | -------------------------- |
+| Baris per fungsi      | ≤ 30                       |
+| Parameter             | ≤ 3 (lebih → pakai object) |
+| Cyclomatic complexity | ≤ 10                       |
+| Nesting level         | ≤ 3                        |
+| Return statement      | ≤ 5                        |
 
 ### 4.2 Parameter
 
 ```ts
 // ❌ SALAH — banyak parameter posisional
-function createUser(name: string, email: string, role: string, tenant: string) {}
+function createUser(
+  name: string,
+  email: string,
+  role: string,
+  tenant: string,
+) {}
 
 // ✅ BENAR — object parameter
 interface CreateUserInput {
@@ -171,7 +184,9 @@ function calculateQuota(used: number, limit: number): number {
 
 // ❌ Impure — susah dites
 let quota = 0;
-function decrementQuota(): void { quota--; }
+function decrementQuota(): void {
+  quota--;
+}
 ```
 
 ---
@@ -180,12 +195,12 @@ function decrementQuota(): void { quota--; }
 
 ### 5.1 Standar yang Diikuti
 
-| RFC | Judul | Relevansi |
-|---|---|---|
-| **RFC 7807** | Problem Details for HTTP APIs | Format error response |
-| **RFC 9110** | HTTP Semantics | Status code & method semantics |
-| **RFC 6750** | Bearer Token | Format error auth |
-| **RFC 7231** | HTTP/1.1 Semantics | `Retry-After`, `Allow` |
+| RFC          | Judul                         | Relevansi                      |
+| ------------ | ----------------------------- | ------------------------------ |
+| **RFC 7807** | Problem Details for HTTP APIs | Format error response          |
+| **RFC 9110** | HTTP Semantics                | Status code & method semantics |
+| **RFC 6750** | Bearer Token                  | Format error auth              |
+| **RFC 7231** | HTTP/1.1 Semantics            | `Retry-After`, `Allow`         |
 
 ### 5.2 Format Error Response (RFC 7807)
 
@@ -209,16 +224,17 @@ Setiap error **wajib** mengembalikan format ini:
 ```
 
 **Field wajib:**
-| Field | Tipe | Sumber |
-|---|---|---|
-| `type` | URI | `https://api.example.com/errors/{CODE}` |
-| `title` | string | Dari `ERROR_CATALOG` |
-| `status` | integer | HTTP status |
-| `code` | string | `GW_*` stabil |
-| `instance` | string | Path request |
-| `requestId` | string | Dari middleware |
-| `timestamp` | ISO 8601 | Waktu kejadian |
-| `retryable` | boolean | Dari catalog |
+
+| Field       | Tipe     | Sumber                                  |
+| ----------- | -------- | --------------------------------------- |
+| `type`      | URI      | `https://api.example.com/errors/{CODE}` |
+| `title`     | string   | Dari `ERROR_CATALOG`                    |
+| `status`    | integer  | HTTP status                             |
+| `code`      | string   | `GW_*` stabil                           |
+| `instance`  | string   | Path request                            |
+| `requestId` | string   | Dari middleware                         |
+| `timestamp` | ISO 8601 | Waktu kejadian                          |
+| `retryable` | boolean  | Dari catalog                            |
 
 **Field opsional:**
 `detail`, `tenantId`, `retryAfter`, `errors[]`, `traceId`.
@@ -233,40 +249,41 @@ Sesuai **RFC 7807 §3**. Tidak boleh `application/json` biasa untuk error.
 
 ### 5.4 Header Wajib untuk Error
 
-| Status | Header | Nilai | RFC |
-|---|---|---|---|
-| 401 | `WWW-Authenticate` | `Bearer realm="api"` | RFC 6750 |
-| 405 | `Allow` | `GET, POST` | RFC 9110 §10.2.1 |
-| 429 | `Retry-After` | detik / HTTP-date | RFC 9110 §10.2.3 |
-| 429 | `X-RateLimit-Limit` | angka | De facto |
-| 429 | `X-RateLimit-Remaining` | angka | De facto |
-| 429 | `X-RateLimit-Reset` | unix ts | De facto |
-| 503 | `Retry-After` | detik | RFC 9110 |
+| Status | Header                  | Nilai                | RFC              |
+| ------ | ----------------------- | -------------------- | ---------------- |
+| 401    | `WWW-Authenticate`      | `Bearer realm="api"` | RFC 6750         |
+| 405    | `Allow`                 | `GET, POST`          | RFC 9110 §10.2.1 |
+| 429    | `Retry-After`           | detik / HTTP-date    | RFC 9110 §10.2.3 |
+| 429    | `X-RateLimit-Limit`     | angka                | De facto         |
+| 429    | `X-RateLimit-Remaining` | angka                | De facto         |
+| 429    | `X-RateLimit-Reset`     | unix ts              | De facto         |
+| 503    | `Retry-After`           | detik                | RFC 9110         |
 
 ### 5.5 Status Code — Wajib Sesuai RFC 9110
 
-| Kode | Nama | Kapan Dipakai |
-|---|---|---|
-| 400 | Bad Request | Validasi input gagal |
-| 401 | Unauthorized | Belum autentikasi |
-| 403 | Forbidden | Sudah autentikasi, tidak berwenang |
-| 404 | Not Found | Resource tidak ada |
-| 405 | Method Not Allowed | Method salah untuk resource |
-| 406 | Not Acceptable | `Accept` tidak didukung |
-| 409 | Conflict | Konflik state (idempotency) |
-| 410 | Gone | Endpoint deprecated |
-| 413 | Payload Too Large | Body terlalu besar |
-| 415 | Unsupported Media Type | `Content-Type` salah |
-| 422 | Unprocessable Entity | Semantik salah |
-| 429 | Too Many Requests | Rate limit |
-| 500 | Internal Server Error | Bug |
-| 501 | Not Implemented | Belum ada |
-| 502 | Bad Gateway | Upstream error |
-| 503 | Service Unavailable | Down / maintenance |
-| 504 | Gateway Timeout | Upstream timeout |
-| 508 | Loop Detected | Routing loop (RFC 5842) |
+| Kode | Nama                   | Kapan Dipakai                      |
+| ---- | ---------------------- | ---------------------------------- |
+| 400  | Bad Request            | Validasi input gagal               |
+| 401  | Unauthorized           | Belum autentikasi                  |
+| 403  | Forbidden              | Sudah autentikasi, tidak berwenang |
+| 404  | Not Found              | Resource tidak ada                 |
+| 405  | Method Not Allowed     | Method salah untuk resource        |
+| 406  | Not Acceptable         | `Accept` tidak didukung            |
+| 409  | Conflict               | Konflik state (idempotency)        |
+| 410  | Gone                   | Endpoint deprecated                |
+| 413  | Payload Too Large      | Body terlalu besar                 |
+| 415  | Unsupported Media Type | `Content-Type` salah               |
+| 422  | Unprocessable Entity   | Semantik salah                     |
+| 429  | Too Many Requests      | Rate limit                         |
+| 500  | Internal Server Error  | Bug                                |
+| 501  | Not Implemented        | Belum ada                          |
+| 502  | Bad Gateway            | Upstream error                     |
+| 503  | Service Unavailable    | Down / maintenance                 |
+| 504  | Gateway Timeout        | Upstream timeout                   |
+| 508  | Loop Detected          | Routing loop (RFC 5842)            |
 
 **Aturan:**
+
 - ❌ Tidak boleh 200 untuk error
 - ❌ Tidak boleh 401 untuk masalah otorisasi (harus 403)
 - ❌ Tidak boleh 500 untuk error klien (harus 4xx)
@@ -275,13 +292,18 @@ Sesuai **RFC 7807 §3**. Tidak boleh `application/json` biasa untuk error.
 
 ```ts
 // Base — di shared/errors/domain-error.ts
-export class DomainError extends Error { /* ... */ }
+export class DomainError extends Error {
+  /* ... */
+}
 
 // Spesifik — di shared/errors/gateway-error.ts
-export class RateLimitExceededError extends DomainError { /* ... */ }
+export class RateLimitExceededError extends DomainError {
+  /* ... */
+}
 ```
 
 **Aturan:**
+
 - ✅ Semua error extends `DomainError`
 - ✅ Semua error punya `code` dari katalog
 - ❌ Tidak ada `throw new Error()` langsung
@@ -299,6 +321,7 @@ GW_UPSTREAM_TIMEOUT
 ```
 
 **Aturan:**
+
 - ✅ Uppercase, snake case
 - ✅ Prefix `GW_` wajib
 - ✅ Satu kode = satu makna
@@ -338,10 +361,16 @@ try {
 }
 
 // ❌ SALAH — tangkap dan diam
-try { await foo(); } catch {}
+try {
+  await foo();
+} catch {}
 
 // ❌ SALAH — tangkap dan log saja
-try { await foo(); } catch (e) { console.log(e); }
+try {
+  await foo();
+} catch (e) {
+  console.log(e);
+}
 ```
 
 ### 5.10 Error Tidak Boleh Bocorkan Internal
@@ -352,12 +381,13 @@ throw new Error(`DB failed at 10.0.0.5:5432`);
 
 // ✅ BENAR — pakai meta internal
 throw new InternalDependencyError('Dependency unavailable', {
-  meta: { host: '10.0.0.5', port: 5432 },   // untuk log saja
+  meta: { host: '10.0.0.5', port: 5432 }, // untuk log saja
   detail: 'Service sementara tidak tersedia', // untuk klien
 });
 ```
 
 **Dilarang di `detail` (yang dikirim ke klien):**
+
 - Stack trace
 - Nama host / IP / port internal
 - Nama tabel / kolom DB
@@ -367,14 +397,14 @@ throw new InternalDependencyError('Dependency unavailable', {
 
 ### 5.11 Fail Mode
 
-| Fitur | Mode | Alasan |
-|---|---|---|
-| Rate limit | **Fail-open** | Over-quota < API down |
-| Idempotency | **Fail-closed** | Cegah duplikasi |
-| Auth | **Fail-closed** | Cegah akses tidak sah |
-| Cache | **Fail-open** | Miss → upstream |
-| Logging | **Fail-open** | Log tidak boleh ganggu |
-| Metrics | **Fail-open** | Metric tidak boleh ganggu |
+| Fitur       | Mode            | Alasan                    |
+| ----------- | --------------- | ------------------------- |
+| Rate limit  | **Fail-open**   | Over-quota < API down     |
+| Idempotency | **Fail-closed** | Cegah duplikasi           |
+| Auth        | **Fail-closed** | Cegah akses tidak sah     |
+| Cache       | **Fail-open**   | Miss → upstream           |
+| Logging     | **Fail-open**   | Log tidak boleh ganggu    |
+| Metrics     | **Fail-open**   | Metric tidak boleh ganggu |
 
 ### 5.12 Retry & Idempotency
 
@@ -392,6 +422,7 @@ if (IDEMPOTENT_METHODS.has(method)) {
 ```
 
 **Aturan:**
+
 - ❌ Jangan retry POST/PUT/PATCH tanpa idempotency key
 - ✅ Retry dengan exponential backoff + jitter
 - ✅ Batasi max attempt (default 3)
@@ -406,7 +437,7 @@ if (IDEMPOTENT_METHODS.has(method)) {
 ```ts
 // ✅ BENAR
 const Schema = z.object({
-  email: z.string().email().max(254),   // RFC 5321
+  email: z.string().email().max(254), // RFC 5321
   name: z.string().min(1).max(100),
   age: z.number().int().min(0).max(150),
 });
@@ -425,13 +456,13 @@ if (!parsed.success) {
 
 ### 6.2 Header Validation
 
-| Header | Validasi | RFC |
-|---|---|---|
-| `Content-Type` | Media type valid | RFC 9110 §8.3 |
-| `Accept` | Media type valid | RFC 9110 §12.5.1 |
-| `Authorization` | `Bearer <token>` | RFC 6750 |
-| `Idempotency-Key` | UUID v4 / ULID | De facto |
-| `X-Request-ID` | Alfanumerik, ≤ 128 | De facto |
+| Header            | Validasi           | RFC              |
+| ----------------- | ------------------ | ---------------- |
+| `Content-Type`    | Media type valid   | RFC 9110 §8.3    |
+| `Accept`          | Media type valid   | RFC 9110 §12.5.1 |
+| `Authorization`   | `Bearer <token>`   | RFC 6750         |
+| `Idempotency-Key` | UUID v4 / ULID     | De facto         |
+| `X-Request-ID`    | Alfanumerik, ≤ 128 | De facto         |
 
 ### 6.3 Body Size Limit
 
@@ -450,13 +481,18 @@ Jika melebihi → `413 GW_VALIDATION_PAYLOAD_TOO_LARGE`.
 
 ```ts
 // ✅ BENAR
-this.logger.log({
-  requestId, tenantId, userId,
-  route: '/api/v1/orders',
-  method: 'POST',
-  status: 200,
-  latencyMs: 45,
-}, 'Request completed');
+this.logger.log(
+  {
+    requestId,
+    tenantId,
+    userId,
+    route: '/api/v1/orders',
+    method: 'POST',
+    status: 200,
+    latencyMs: 45,
+  },
+  'Request completed',
+);
 
 // ❌ SALAH
 console.log(`Request to /api/v1/orders completed in 45ms`);
@@ -492,13 +528,13 @@ console.log(`Request to /api/v1/orders completed in 45ms`);
 
 ### 7.4 Level Log
 
-| Level | Kapan | Contoh |
-|---|---|---|
-| `error` | 5xx, exception tak terduga | Upstream down |
-| `warn` | 4xx, degradasi, fallback | Rate limit hit |
-| `info` | Request sukses, state change | Config reloaded |
-| `debug` | Debugging (dev only) | Route matched |
-| `trace` | Sangat detail (jarang) | Header transformed |
+| Level   | Kapan                        | Contoh             |
+| ------- | ---------------------------- | ------------------ |
+| `error` | 5xx, exception tak terduga   | Upstream down      |
+| `warn`  | 4xx, degradasi, fallback     | Rate limit hit     |
+| `info`  | Request sukses, state change | Config reloaded    |
+| `debug` | Debugging (dev only)         | Route matched      |
+| `trace` | Sangat detail (jarang)       | Header transformed |
 
 ---
 
@@ -577,6 +613,7 @@ Gunakan `dependency-cruiser` di CI untuk mendeteksi.
 Sebelum commit, setiap file **wajib** melewati checklist ini:
 
 ### Struktur
+
 - [ ] Import terurut (built-in → external → internal)
 - [ ] Named export saja
 - [ ] File ≤ 200 baris
@@ -584,6 +621,7 @@ Sebelum commit, setiap file **wajib** melewati checklist ini:
 - [ ] Tidak ada default export
 
 ### TypeScript
+
 - [ ] Tidak ada `any`
 - [ ] Tidak ada `as unknown as`
 - [ ] Tidak ada `@ts-ignore`
@@ -591,6 +629,7 @@ Sebelum commit, setiap file **wajib** melewati checklist ini:
 - [ ] Generic untuk abstraksi
 
 ### Clean Code
+
 - [ ] Nama jelas & konsisten
 - [ ] Tidak ada magic number
 - [ ] Tidak ada duplikasi
@@ -598,6 +637,7 @@ Sebelum commit, setiap file **wajib** melewati checklist ini:
 - [ ] Tidak ada `console.log`
 
 ### Error Handling
+
 - [ ] Lempar `DomainError`, bukan `Error`
 - [ ] Error code dari katalog
 - [ ] Tidak catch-and-silent
@@ -605,17 +645,20 @@ Sebelum commit, setiap file **wajib** melewati checklist ini:
 - [ ] Fail mode sesuai (open/close)
 
 ### Validasi
+
 - [ ] Input dari luar divalidasi Zod
 - [ ] Header disanitasi
 - [ ] Body size limit
 - [ ] Timeout untuk semua I/O
 
 ### Logging
+
 - [ ] Field wajib lengkap
 - [ ] Tidak log secret/PII
 - [ ] Level sesuai
 
 ### Test
+
 - [ ] Ada test untuk use case
 - [ ] Ada test untuk error path
 - [ ] Ada test untuk edge case
@@ -673,12 +716,15 @@ export class CheckQuotaUseCase {
     const result = await this.limiter.check(key, 100, 60);
 
     if (!result.allowed) {
-      this.logger.warn({
-        tenantId: input.tenantId,
-        userId: input.userId,
-        route: input.route,
-        remaining: result.remaining,
-      }, 'Rate limit exceeded');
+      this.logger.warn(
+        {
+          tenantId: input.tenantId,
+          userId: input.userId,
+          route: input.route,
+          remaining: result.remaining,
+        },
+        'Rate limit exceeded',
+      );
 
       throw new RateLimitExceededError('Quota terlampaui', {
         detail: `Limit 100 req/min, sisa ${result.remaining}`,
@@ -706,13 +752,19 @@ import { RateLimitExceededError } from '@/shared/errors';
 
 describe('CheckQuotaUseCase', () => {
   it('returns allowed=true jika kuota tersedia', async () => {
-    const limiter = { check: vi.fn().mockResolvedValue({
-      allowed: true, remaining: 99, resetAt: 1758448800,
-    })};
+    const limiter = {
+      check: vi.fn().mockResolvedValue({
+        allowed: true,
+        remaining: 99,
+        resetAt: 1758448800,
+      }),
+    };
     const uc = new CheckQuotaUseCase(limiter);
 
     const result = await uc.execute({
-      tenantId: 't_1', userId: 'u_1', route: '/orders',
+      tenantId: 't_1',
+      userId: 'u_1',
+      route: '/orders',
     });
 
     expect(result.allowed).toBe(true);
@@ -720,14 +772,22 @@ describe('CheckQuotaUseCase', () => {
   });
 
   it('throws RateLimitExceededError jika kuota habis', async () => {
-    const limiter = { check: vi.fn().mockResolvedValue({
-      allowed: false, remaining: 0, resetAt: 1758448800,
-    })};
+    const limiter = {
+      check: vi.fn().mockResolvedValue({
+        allowed: false,
+        remaining: 0,
+        resetAt: 1758448800,
+      }),
+    };
     const uc = new CheckQuotaUseCase(limiter);
 
-    await expect(uc.execute({
-      tenantId: 't_1', userId: 'u_1', route: '/orders',
-    })).rejects.toThrow(RateLimitExceededError);
+    await expect(
+      uc.execute({
+        tenantId: 't_1',
+        userId: 'u_1',
+        route: '/orders',
+      }),
+    ).rejects.toThrow(RateLimitExceededError);
   });
 });
 ```
@@ -736,29 +796,29 @@ describe('CheckQuotaUseCase', () => {
 
 ## 12. Anti-Pattern — Dilarang Keras
 
-| # | Anti-Pattern | Contoh | Ganti Dengan |
-|---|---|---|---|
-| 1 | Magic number | `if (x > 100)` | `const LIMIT = 100` |
-| 2 | Boolean param | `create(true, false)` | Object param |
-| 3 | Nested ternary | `a ? b ? c : d : e` | if-else / fungsi |
-| 4 | Long param list | `f(a,b,c,d,e,f)` | Object param |
-| 5 | God class | Class 1000 baris | Pecah |
-| 6 | Shotgun surgery | Ubah 1 fitur, edit 10 file | Perbaiki boundary |
-| 7 | Copy-paste | Duplikasi logika | Ekstrak fungsi |
-| 8 | Commented code | `// oldFunc()` | Hapus |
-| 9 | Dead code | Fungsi tidak dipakai | Hapus |
-| 10 | Catch-all | `catch (e) {}` | Tangkap spesifik |
-| 11 | Stringly typed | `type = "user"` | Enum / union |
-| 12 | Primitive obsession | `userId: string` | Value object |
-| 13 | Feature envy | Method akses field class lain | Pindah method |
-| 14 | Inappropriate intimacy | Class saling tahu detail | Interface |
-| 15 | Temporary field | Field hanya dipakai sesekali | Lokal variabel |
+| #   | Anti-Pattern           | Contoh                        | Ganti Dengan        |
+| --- | ---------------------- | ----------------------------- | ------------------- |
+| 1   | Magic number           | `if (x > 100)`                | `const LIMIT = 100` |
+| 2   | Boolean param          | `create(true, false)`         | Object param        |
+| 3   | Nested ternary         | `a ? b ? c : d : e`           | if-else / fungsi    |
+| 4   | Long param list        | `f(a,b,c,d,e,f)`              | Object param        |
+| 5   | God class              | Class 1000 baris              | Pecah               |
+| 6   | Shotgun surgery        | Ubah 1 fitur, edit 10 file    | Perbaiki boundary   |
+| 7   | Copy-paste             | Duplikasi logika              | Ekstrak fungsi      |
+| 8   | Commented code         | `// oldFunc()`                | Hapus               |
+| 9   | Dead code              | Fungsi tidak dipakai          | Hapus               |
+| 10  | Catch-all              | `catch (e) {}`                | Tangkap spesifik    |
+| 11  | Stringly typed         | `type = "user"`               | Enum / union        |
+| 12  | Primitive obsession    | `userId: string`              | Value object        |
+| 13  | Feature envy           | Method akses field class lain | Pindah method       |
+| 14  | Inappropriate intimacy | Class saling tahu detail      | Interface           |
+| 15  | Temporary field        | Field hanya dipakai sesekali  | Lokal variabel      |
 
 ---
 
 ## 13. Ringkasan
 
-> **File kecil, nama jelas, immutable, early return. Error pakai DomainError + kode GW_*, response RFC 7807 (`application/problem+json`), status sesuai RFC 9110, header sesuai RFC 6750/9110. Validasi Zod. Log structured tanpa PII. Fail-open/closed sesuai konteks. Test ≥ 90% di core.**
+> **File kecil, nama jelas, immutable, early return. Error pakai DomainError + kode GW\_*, response RFC 7807 (`application/problem+json`), status sesuai RFC 9110, header sesuai RFC 6750/9110. Validasi Zod. Log structured tanpa PII. Fail-open/closed sesuai konteks. Test ≥ 90% di core.**
 
 ### Golden Rules
 

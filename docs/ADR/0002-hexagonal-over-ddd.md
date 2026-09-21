@@ -1,9 +1,9 @@
 # ADR-0002: Hexagonal Architecture over Full DDD
 
-| Field | Value |
-|---|---|
-| Status | Accepted |
-| Tanggal | 2026-09-21 |
+| Field   | Value                |
+| ------- | -------------------- |
+| Status  | Accepted             |
+| Tanggal | 2026-09-21           |
 | Decider | Platform Engineering |
 
 ---
@@ -37,17 +37,20 @@ Tidak ada aggregate root, domain event, atau repository pattern klasik. Port lan
 ## Consequences
 
 ### Positif
+
 - **Testability**: core bisa dites tanpa Redis, HTTP, atau NestJS (mock port).
 - **Replaceability**: ganti ioredis → Redisson tinggal ganti adapter, core tidak berubah.
 - **Simplicity**: tidak perlu belajar DDD untuk gateway yang本质上 adalah proxy.
 - **Sejalan NestJS**: NestJS secara natural mendukung dependency injection yang cocok untuk port/adapter.
 
 ### Negatif
+
 - **Tidak ada bahasa ubiquitous language**: tidak ada domain model untuk "talking about" — karena memang tidak ada domain.
 - **Overhead mental**: developer yang terbiasa DDD mungkin merasa kurang "_STRUCTURED".
 - **Tidak scale ke domain kompleks**: jika gateway berkembang menjadi lebih dari proxy, mungkin perlu DDD.
 
 ### Mitigasi
+
 - Dokumentasikan di `ARCHITECTURE.md` §2 dengan aturan dependency yang jelas.
 - Gunakan `dependency-cruiser` di CI untuk enforce layer boundaries.
 - Jika scope berkembang, re-evaluasi dengan ADR baru.
@@ -56,8 +59,8 @@ Tidak ada aggregate root, domain event, atau repository pattern klasik. Port lan
 
 ## Alternatives yang Ditolak
 
-| Alternatives | Alasan Ditolak |
-|---|---|
-| Full DDD | Overkill — gateway bukan domain bisnis |
-| Layered tanpa hexagonal | Kurang jelas boundary, infra bisa bocor ke core |
-| Clean Architecture murni | Terlalu rigid untuk NestJS ecosystem |
+| Alternatives             | Alasan Ditolak                                  |
+| ------------------------ | ----------------------------------------------- |
+| Full DDD                 | Overkill — gateway bukan domain bisnis          |
+| Layered tanpa hexagonal  | Kurang jelas boundary, infra bisa bocor ke core |
+| Clean Architecture murni | Terlalu rigid untuk NestJS ecosystem            |

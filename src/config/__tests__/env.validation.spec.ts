@@ -24,15 +24,11 @@ describe('env.validation', () => {
   });
 
   it('throws on invalid NODE_ENV', () => {
-    expect(() => validateEnv({ NODE_ENV: 'staging' })).toThrow(
-      'Invalid environment variables',
-    );
+    expect(() => validateEnv({ NODE_ENV: 'staging' })).toThrow('Invalid environment variables');
   });
 
   it('throws on invalid PORT', () => {
-    expect(() => validateEnv({ PORT: 'abc' })).toThrow(
-      'Invalid environment variables',
-    );
+    expect(() => validateEnv({ PORT: 'abc' })).toThrow('Invalid environment variables');
   });
 
   it('throws when production uses development values', () => {

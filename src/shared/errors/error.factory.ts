@@ -31,9 +31,7 @@ export function buildProblemDetails(
   const baseUrl = options.baseUrl ?? ERROR_BASE_URL;
   const hideDetail = !!entry.hideDetailInProd && options.isProduction;
 
-  const detail = hideDetail
-    ? undefined
-    : options.detailOverride ?? error.detail ?? error.message;
+  const detail = hideDetail ? undefined : (options.detailOverride ?? error.detail ?? error.message);
 
   const retryAfter = options.retryAfter ?? error.retryAfter;
 

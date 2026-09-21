@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build
+dist
+build
+coverage
+*.tsbuildinfo
+
+# Lock files (auto-generated, JANGAN di-format)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated
+*.min.js
+*.min.css
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Report
+checkpoint-report.txt
+checkpoint*.txt
+
+# Misc
+.DS_Store
+.idea
+.vscode
