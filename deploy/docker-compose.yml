@@ -1,0 +1,54 @@
+name: api-gateway
+
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: prod
+    image: api-gateway:${GATEWAY_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_NAME: api-gateway
+    env_file:
+      - ../.env.${NODE_ENV:-production}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - gateway-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - gateway-net
+
+volumes:
+  redis-data:
+
+networks:
+  gateway-net:
+    driver: bridge

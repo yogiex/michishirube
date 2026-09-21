@@ -1,0 +1,134 @@
+# Lefthook — Git hooks manager (lebih cepat dari husky)
+# Docs: https://lefthook.dev
+
+min_version: 1.7.0
+no_tty: false
+colors: true
+
+# ─── Global exclude ─────────────────────────────────
+skip_output:
+  - meta
+  - summary
+
+# ─────────────────────────────────────────────────────
+# PRE-COMMIT — jalan sebelum commit dibuat
+# Cepat, hanya file yang di-stage
+# ─────────────────────────────────────────────────────
+pre-commit:
+  parallel: true
+  commands:
+    # ─── Format check (hanya file staged) ────────────
+    prettier:
+      glob: '*.{ts,js,mjs,cjs,json,yaml,yml,md}'
+      run: npx prettier --check {staged_files}
+      stage_fixed: true
+      fail_text: '❌ Prettier: jalankan `pnpm format` lalu commit ulang'
+
+    # ─── Lint (hanya file staged) ────────────────────
+    oxlint:
+      glob: '*.ts'
+      run: npx oxlint {staged_files}
+      fail_text: '❌ Oxlint: perbaiki error di atas'
+
+    # ─── Type check (selalu full, karena TS butuh konteks) ──
+    typecheck:
+      glob: '*.ts'
+      run: pnpm typecheck
+      fail_text: '❌ TypeScript: ada type error'
+
+    # ─── Dependency boundary check ──────────────────
+    deps:
+      glob: 'src/**/*.ts'
+      run: pnpm deps:check
+      fail_text: '❌ Boundary violation: cek dependency-cruiser'
+
+    # ─── Cek secret tidak sengaja ter-commit ────────
+    secret-scan:
+      glob: '*.{ts,js,json,env,yaml,yml}'
+      run: |
+        if grep -E '(JWT_SECRET|REDIS_PASSWORD|API_KEY|PRIVATE_KEY)\s*=\s*["\047][^"\047]{8,}' {staged_files} 2>/dev/null; then
+          echo "❌ Potensi secret ter-commit. Cek file di atas."
+          exit 1
+        fi
+      fail_text: '❌ Secret terdeteksi'
+
+    # ─── Cegah commit file yang tidak seharusnya ────
+    no-forbidden-files:
+      run: |
+        FORBIDDEN=$(echo "{staged_files}" | tr ' ' '\n' | grep -E '(^|/)(\.env$|\.env\.development$|\.env\.production$|\.env\.local$|node_modules/|dist/|coverage/|\.tsbuildinfo$)' || true)
+        if [ -n "$FORBIDDEN" ]; then
+          echo "❌ File berikut tidak boleh di-commit:"
+          echo "$FORBIDDEN"
+          exit 1
+        fi
+      fail_text: '❌ File terlarang ter-stage'
+
+# ─────────────────────────────────────────────────────
+# COMMIT-MSG — validasi pesan commit
+# ─────────────────────────────────────────────────────
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}
+      fail_text: '❌ Format commit salah. Contoh: feat(auth): add JWT verification'
+
+# ─────────────────────────────────────────────────────
+# PRE-PUSH — jalan sebelum push ke remote
+# Lebih berat, hanya jika ada perubahan src/
+# ─────────────────────────────────────────────────────
+pre-push:
+  parallel: true
+  commands:
+    # ─── Unit test ──────────────────────────────────
+    test:
+      glob: 'src/**/*.ts'
+      run: pnpm test
+      fail_text: '❌ Unit test gagal'
+
+    # ─── Build (memastikan compile) ─────────────────
+    build:
+      glob: 'src/**/*.ts'
+      run: pnpm build
+      fail_text: '❌ Build gagal'
+
+    # ─── Full type check ────────────────────────────
+    typecheck:
+      run: pnpm typecheck
+      fail_text: '❌ TypeScript error'
+
+    # ─── Cek branch tidak push ke main/develop ─────
+    no-direct-push:
+      run: |
+        BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "develop" ]; then
+          echo "❌ Jangan push langsung ke $BRANCH. Buat branch feat/fix/chore."
+          exit 1
+        fi
+      fail_text: '❌ Push langsung ke protected branch'
+
+# ─────────────────────────────────────────────────────
+# POST-CHECKOUT — info setelah ganti branch
+# ─────────────────────────────────────────────────────
+post-checkout:
+  commands:
+    info:
+      run: |
+        echo "🌿 Branch: $(git rev-parse --abbrev-ref HEAD)"
+        echo "📦 Node: $(node -v)"
+        echo "📦 pnpm: $(pnpm -v)"
+        if [ ! -d node_modules ]; then
+          echo "⚠️  node_modules tidak ada — jalankan: pnpm install"
+        fi
+      fail_text: ''
+
+# ─────────────────────────────────────────────────────
+# POST-MERGE — info setelah merge
+# ─────────────────────────────────────────────────────
+post-merge:
+  commands:
+    deps-changed:
+      run: |
+        if git diff HEAD@{1} HEAD --name-only | grep -qE '^(package\.json|pnpm-lock\.yaml)$'; then
+          echo "⚠️  Dependency berubah — jalankan: pnpm install"
+        fi
+      fail_text: ''

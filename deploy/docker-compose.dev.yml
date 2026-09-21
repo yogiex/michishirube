@@ -1,0 +1,47 @@
+services:
+  gateway:
+    build:
+      target: dev
+    image: api-gateway:dev
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    volumes:
+      - ../src:/app/src:delegated
+      - ../test:/app/test:delegated
+      - ../config:/app/config:delegated
+      - ../package.json:/app/package.json:ro
+      - ../tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      REDIS_HOST: redis
+    command: pnpm start:dev
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  redis:
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly no
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+    volumes: []
+
+  redis-ui:
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - gateway-net
