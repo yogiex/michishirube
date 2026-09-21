@@ -1,15 +1,18 @@
+export interface AuthenticatedUser {
+  readonly userId: string;
+  readonly tenantId: string;
+  readonly roles: readonly string[];
+  readonly scopes: readonly string[];
+  readonly expiresAt: Date;
+}
+
 declare global {
   namespace Express {
     interface Request {
-      /** X-Request-ID yang dipakai sepanjang request */
       id?: string;
       requestId?: string;
-      /** Tenant ter-resolve (prioritas: JWT claim → subdomain → header) */
       tenantId?: string;
-      /** Principal ter-autentikasi */
-      user?: { id?: string };
+      user?: AuthenticatedUser;
     }
   }
 }
-
-export {};
