@@ -1,355 +1,405 @@
 # Project Structure
 
-## API Gateway NestJS — Hexagonal + Modular Monolith
+## Michishirube — Hexagonal + Modular Monolith
 
-| Field      | Value                                           |
-| ---------- | ----------------------------------------------- |
-| Versi      | 1.0.0                                           |
-| Pendekatan | Hexagonal (Ports & Adapters) + Modular Monolith |
-| Alasan     | Gateway bukan domain bisnis; DDD penuh overkill |
+| Field               | Value                                                                |
+| ------------------- | -------------------------------------------------------------------- |
+| Versi               | 1.1.0                                                                |
+| Status              | Approved                                                             |
+| Pendekatan          | Hexagonal (Ports & Adapters) + Modular Monolith                      |
+| Terakhir Diperbarui | 2026-09-22                                                           |
+| Dokumen Terkait     | `PRD.md`, `ARCHITECTURE.md`, `TECHSTACK.md`, `RULES.md`, `AGENTS.md` |
 
 ---
 
 ## 1. Filosofi Struktur
 
-API Gateway **bukan** aplikasi domain bisnis. Ia adalah **infrastruktur**.
-Karena itu:
+Michishirube adalah **infrastruktur**, bukan domain bisnis. Karena itu:
 
-- **DDD penuh tidak diterapkan** (tidak ada Aggregate, Entity bisnis, Value Object
-  domain kecuali yang relevan seperti `TenantId`, `ApiKey`).
-- Digunakan **Hexagonal Architecture (Ports & Adapters)**:
-  - **Domain/Core** = logika gateway (routing, auth, rate limit).
-  - **Ports** = interface (mis. `RateLimiterPort`, `RouteRepositoryPort`).
-  - **Adapters** = implementasi (Redis, HTTP, gRPC, YAML).
-- Setiap **kapabilitas gateway** diperlakukan sebagai **module** (bounded context
-  ringan): routing, auth, rate-limit, idempotency, circuit-breaker, observability.
-
-Tujuan:
-
-- Testable tanpa infra (mock adapter).
-- Bisa ganti Redis → Memcached, HTTP → gRPC, tanpa mengubah core.
-- Modul bisa diekstrak jadi service terpisah jika perlu.
+- **DDD penuh tidak diterapkan** — tidak ada Aggregate bisnis, Domain Event
+- **Hexagonal (Ports & Adapters)** — core murni, adapter bisa ditukar
+- Setiap **kapabilitas gateway** = satu module (bounded context ringan)
+- **Stateless** — tidak ada state lokal yang penting; semua di Redis + YAML
 
 ---
 
-## 2. Struktur Folder Lengkap
+## 2. Struktur Folder (Sprint 0 + Sprint 1 #1-3)
 
 ```text
-api-gateway/
+michishirube/
 ├── docs/
+│   ├── ARCHITECTURE.md
 │   ├── PRD.md
 │   ├── STRUCTURE.md
-│   ├── ADR/
-│   │   ├── 0001-use-nestjs.md
-│   │   ├── 0002-hexagonal-over-ddd.md
-│   │   ├── 0003-redis-for-state.md
-│   │   ├── 0004-grpc-over-zeromq.md
-│   │   └── 0005-jwt-rs256-jwks.md
-│   └── openapi.yaml
+│   └── ADR/
+│       ├── 0002-hexagonal-over-ddd.md
+│       └── 0003-redis-as-only-state.md
 │
 ├── src/
 │   ├── main.ts
 │   ├── app.module.ts
 │   │
-│   ├── config/                          # Konfigurasi & validasi env
+│   ├── config/
+│   │   ├── config.module.ts
 │   │   ├── configuration.ts
-│   │   ├── env.validation.ts            # Zod / Joi schema
-│   │   └── config.module.ts
+│   │   ├── env.validation.ts
+│   │   └── __tests__/
+│   │       └── env.validation.spec.ts
 │   │
-│   ├── shared/                          # Cross-cutting, tanpa domain logic
-│   │   ├── constants/
-│   │   │   ├── headers.ts               # X-Tenant-ID, Idempotency-Key, dll
-│   │   │   └── error-codes.ts
-│   │   ├── errors/
-│   │   │   ├── domain-error.ts
-│   │   │   ├── http-error.filter.ts
-│   │   │   └── error-response.dto.ts
-│   │   ├── decorators/
-│   │   │   ├── current-user.decorator.ts
-│   │   │   ├── current-tenant.decorator.ts
-│   │   │   ├── idempotency-key.decorator.ts
-│   │   │   └── public.decorator.ts
-│   │   ├── interceptors/
-│   │   │   ├── request-context.interceptor.ts
-│   │   │   ├── logging.interceptor.ts
-│   │   │   └── transform.interceptor.ts
-│   │   ├── pipes/
-│   │   │   └── zod-validation.pipe.ts
-│   │   ├── utils/
-│   │   │   ├── hash.util.ts
-│   │   │   ├── retry.util.ts
-│   │   │   └── backoff.util.ts
-│   │   └── types/
-│   │       ├── request-context.type.ts
-│   │       └── tenant.type.ts
-│   │
-│   ├── core/                            # Domain inti gateway (pure, no infra)
-│   │   ├── tenant/
-│   │   │   ├── domain/
-│   │   │   │   ├── tenant-id.vo.ts          # Value Object
-│   │   │   │   ├── tenant.entity.ts
-│   │   │   │   └── tenant.repository.ts     # PORT
-│   │   │   ├── application/
-│   │   │   │   └── resolve-tenant.usecase.ts
-│   │   │   └── tenant.module.ts
-│   │   │
-│   │   ├── routing/
-│   │   │   ├── domain/
-│   │   │   │   ├── route.entity.ts
-│   │   │   │   ├── upstream.vo.ts
-│   │   │   │   └── route.repository.ts      # PORT
-│   │   │   ├── application/
-│   │   │   │   ├── resolve-route.usecase.ts
-│   │   │   │   └── reload-routes.usecase.ts
-│   │   │   └── routing.module.ts
-│   │   │
+│   ├── core/
 │   │   ├── auth/
 │   │   │   ├── domain/
 │   │   │   │   ├── principal.entity.ts
-│   │   │   │   ├── role.vo.ts
-│   │   │   │   └── token-verifier.port.ts
-│   │   │   ├── application/
-│   │   │   │   ├── authenticate.usecase.ts
-│   │   │   │   └── authorize.usecase.ts
-│   │   │   └── auth.module.ts
+│   │   │   │   └── role.vo.ts
+│   │   │   ├── application/              # (belum, Sprint 1 #2)
+│   │   │   └── __tests__/
+│   │   │       └── principal.entity.spec.ts
 │   │   │
-│   │   ├── rate-limit/
+│   │   ├── rbac/
 │   │   │   ├── domain/
-│   │   │   │   ├── quota.vo.ts
-│   │   │   │   └── rate-limiter.port.ts
+│   │   │   │   ├── permission.vo.ts
+│   │   │   │   ├── policy.entity.ts
+│   │   │   │   └── policy-evaluator.port.ts
 │   │   │   ├── application/
-│   │   │   │   └── check-quota.usecase.ts
-│   │   │   └── rate-limit.module.ts
+│   │   │   │   └── check-permission.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   │   ├── check-permission.usecase.spec.ts
+│   │   │   │   ├── permission.vo.spec.ts
+│   │   │   │   └── policy.entity.spec.ts
+│   │   │   └── rbac.module.ts
 │   │   │
-│   │   ├── idempotency/
+│   │   ├── tenant/
 │   │   │   ├── domain/
-│   │   │   │   ├── idempotency-record.entity.ts
-│   │   │   │   └── idempotency-store.port.ts
+│   │   │   │   ├── tenant.entity.ts
+│   │   │   │   ├── tenant-id.vo.ts
+│   │   │   │   └── tenant.repository.port.ts
 │   │   │   ├── application/
-│   │   │   │   ├── begin-idempotent-request.usecase.ts
-│   │   │   │   └── complete-idempotent-request.usecase.ts
-│   │   │   └── idempotency.module.ts
+│   │   │   │   └── resolve-tenant.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   │   ├── resolve-tenant.usecase.spec.ts
+│   │   │   │   └── tenant-id.vo.spec.ts
+│   │   │   └── tenant.module.ts
 │   │   │
-│   │   └── circuit-breaker/
-│   │       ├── domain/
-│   │       │   ├── circuit-state.vo.ts
-│   │       │   └── circuit-breaker.port.ts
-│   │       ├── application/
-│   │       │   └── execute-with-breaker.usecase.ts
-│   │       └── circuit-breaker.module.ts
+│   │   ├── rate-limit/                   # (Sprint 1 #4 — stub)
+│   │   │   ├── domain/
+│   │   │   └── application/
+│   │   │
+│   │   ├── routing/                      # (Sprint 1 #5 — stub)
+│   │   │   ├── domain/
+│   │   │   └── application/
+│   │   │
+│   │   ├── idempotency/                  # (Sprint 2 — stub)
+│   │   ├── circuit-breaker/              # (Sprint 2 — stub)
+│   │   └── cache/                        # (Sprint 2 — stub)
 │   │
-│   ├── infrastructure/                  # Adapter konkret (mengimplementasi PORT)
+│   ├── infrastructure/
 │   │   ├── redis/
-│   │   │   ├── redis.module.ts
-│   │   │   ├── redis.service.ts
-│   │   │   └── redis.provider.ts
-│   │   ├── jwt/
-│   │   │   ├── jwks.client.ts
-│   │   │   └── jwt-verifier.adapter.ts
-│   │   ├── http/
-│   │   │   ├── http-proxy.adapter.ts
-│   │   │   └── http-client.module.ts
-│   │   ├── grpc/
-│   │   │   ├── grpc-proxy.adapter.ts
-│   │   │   └── grpc-client.module.ts
+│   │   │   ├── redis.constants.ts
+│   │   │   └── redis.module.ts
+│   │   │
+│   │   ├── rbac/
+│   │   │   ├── default-policy-evaluator.adapter.ts
+│   │   │   ├── rbac-infrastructure.module.ts
+│   │   │   └── __tests__/
+│   │   │       └── default-policy-evaluator.adapter.spec.ts
+│   │   │
 │   │   ├── config-repository/
-│   │   │   ├── yaml-route.repository.ts
-│   │   │   └── redis-route.repository.ts
-│   │   ├── rate-limit/
-│   │   │   └── redis-sliding-window.adapter.ts
-│   │   ├── idempotency/
-│   │   │   └── redis-idempotency.adapter.ts
-│   │   └── observability/
-│   │       ├── pino-logger.adapter.ts
-│   │       ├── prometheus-metrics.adapter.ts
-│   │       └── otel-tracing.adapter.ts
+│   │   │   ├── config-repository.module.ts
+│   │   │   ├── yaml-tenant.repository.ts
+│   │   │   └── __tests__/
+│   │   │       └── yaml-tenant.repository.spec.ts
+│   │   │
+│   │   ├── observability/
+│   │   │   └── logger.module.ts
+│   │   │
+│   │   ├── jwt/                          # (Sprint 1 #2 — stub)
+│   │   ├── http/                         # (Sprint 1 #5 — stub)
+│   │   └── grpc/                         # (Sprint 4 — stub)
 │   │
-│   ├── modules/                         # Entry point HTTP (controllers/guards)
-│   │   ├── proxy/
-│   │   │   ├── proxy.controller.ts
-│   │   │   ├── proxy.service.ts
-│   │   │   └── proxy.module.ts
+│   ├── modules/
 │   │   ├── health/
 │   │   │   ├── health.controller.ts
 │   │   │   └── health.module.ts
-│   │   ├── metrics/
-│   │   │   ├── metrics.controller.ts
-│   │   │   └── metrics.module.ts
-│   │   └── admin/
-│   │       ├── routes-admin.controller.ts   # reload routes, dsb
-│   │       └── admin.module.ts
+│   │   ├── proxy/                        # (Sprint 1 #5 — stub)
+│   │   ├── metrics/                      # (Sprint 3 — stub)
+│   │   └── admin/                        # (Sprint 3 — stub)
 │   │
 │   ├── guards/
-│   │   ├── auth.guard.ts
 │   │   ├── rbac.guard.ts
-│   │   ├── tenant.guard.ts
-│   │   └── rate-limit.guard.ts
+│   │   └── __tests__/
+│   │       └── rbac.guard.spec.ts
 │   │
-│   └── middleware/
-│       ├── request-id.middleware.ts
-│       ├── tenant-context.middleware.ts
-│       └── security-headers.middleware.ts
+│   ├── interceptors/                     # (Sprint 2 — empty)
+│   │
+│   ├── middleware/
+│   │   ├── middleware.module.ts
+│   │   ├── request-id.middleware.ts
+│   │   ├── tenant-context.middleware.ts
+│   │   └── __tests__/
+│   │       ├── request-id.middleware.spec.ts
+│   │       └── tenant-context.middleware.spec.ts
+│   │
+│   └── shared/
+│       ├── context/
+│       │   ├── index.ts
+│       │   ├── request-context.ts
+│       │   ├── request-context.module.ts
+│       │   └── __tests__/
+│       │       └── request-context.spec.ts
+│       │
+│       ├── decorators/
+│       │   ├── current-tenant.decorator.ts
+│       │   ├── current-user.decorator.ts
+│       │   ├── permissions.decorator.ts
+│       │   ├── public.decorator.ts
+│       │   ├── roles.decorator.ts
+│       │   ├── scopes.decorator.ts
+│       │   └── index.ts
+│       │
+│       ├── errors/
+│       │   ├── domain-error.ts
+│       │   ├── error-catalog.ts
+│       │   ├── error-codes.ts
+│       │   ├── error.factory.ts
+│       │   ├── error-response.dto.ts
+│       │   ├── gateway-error.ts
+│       │   ├── http-exception.filter.ts
+│       │   ├── index.ts
+│       │   └── __tests__/
+│       │       └── http-exception.filter.spec.ts
+│       │
+│       ├── pipes/
+│       │   ├── zod-validation.pipe.ts
+│       │   └── index.ts
+│       │
+│       ├── types/
+│       │   ├── branded.type.ts
+│       │   ├── codec.port.ts
+│       │   ├── entity.type.ts
+│       │   ├── mapper.port.ts
+│       │   ├── option.type.ts
+│       │   ├── pagination.type.ts
+│       │   ├── repository.port.ts
+│       │   ├── request-context.type.ts
+│       │   ├── result.type.ts
+│       │   ├── use-case.port.ts
+│       │   ├── value-object.ts
+│       │   ├── index.ts
+│       │   └── __tests__/
+│       │       ├── branded.spec.ts
+│       │       ├── misc.spec.ts
+│       │       ├── option.spec.ts
+│       │       ├── pagination.spec.ts
+│       │       ├── result.spec.ts
+│       │       └── value-object.spec.ts
+│       │
+│       ├── constants/                    # (empty)
+│       └── utils/                        # (empty)
 │
 ├── test/
-│   ├── unit/
-│   ├── integration/
-│   ├── e2e/
-│   └── fixtures/
+│   └── app.e2e-spec.ts
 │
 ├── config/
-│   ├── routes.yaml                      # Definisi route default
-│   └── tenants.yaml                     # (opsional) tenant config awal
+│   └── tenants.yaml
 │
 ├── deploy/
-│   ├── Dockerfile
 │   ├── docker-compose.yml
-│   ├── k8s/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   ├── hpa.yaml
-│   │   └── configmap.yaml
-│   └── helm/
+│   ├── docker-compose.dev.yml
+│   ├── docker-compose.staging.yml
+│   ├── docker-compose.prod.yml
+│   ├── .env.docker.example
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   ├── README.md
+│   ├── prometheus/
+│   │   └── prometheus.yml
+│   ├── grafana/
+│   │   └── provisioning/
+│   │       └── datasources/
+│   │           └── prometheus.yml
+│   └── k8s/
 │
 ├── scripts/
-│   ├── load-test.sh
-│   └── seed-redis.ts
+│   ├── checkpoints.sh
+│   ├── compose.sh
+│   ├── dev.sh
+│   ├── p0-fix.sh
+│   └── setup-folders.sh
 │
+├── AGENTS.md
+├── RULES.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── README.md
+├── checkpoint-report.txt
+├── commitlint.config.cjs
+├── .dependency-cruiser.cjs
+├── .editorconfig
 ├── .env.example
-├── .dockerignore
+├── .env.development
+├── .env.production
+├── .env.test
 ├── .gitignore
-├── .eslintrc.cjs
+├── .lefthook.yml
+├── .npmrc
+├── .oxlintrc.json
+├── .prettierignore
 ├── .prettierrc
 ├── nest-cli.json
 ├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── tsconfig.build.json
 ├── tsconfig.json
-└── README.md
+├── vitest.config.e2e.ts
+└── vitest.config.ts
 ```
 
 ---
 
-## 3. Aturan Dependency (PENTING)
+## 3. Statistik (Sprint 0 + 1 #1-3)
 
-Arah dependency **hanya boleh satu arah**:
-
-```text
-modules/  →  core/  →  (tidak boleh import infrastructure)
-modules/  →  infrastructure/
-infrastructure/  →  core/ (implementasi port)
-shared/  ←  dipakai oleh semua, tanpa dependensi ke core/modules
-```
-
-Aturan keras:
-
-1. `core/` **tidak boleh** import NestJS HTTP, Redis, Prisma, dsb.
-   Core hanya berisi pure TypeScript + interface (Port).
-2. `infrastructure/` mengimplementasikan Port dari `core/`.
-3. `modules/` adalah adapter HTTP (controller, guard) yang memanggil Use Case.
-4. `shared/` tidak boleh import dari `core/` atau `modules/`.
-
-Pelanggaran aturan ini bisa dideteksi dengan `eslint-plugin-boundaries`
-atau `dependency-cruiser`.
+| Metrik                  | Jumlah                                                           |
+| ----------------------- | ---------------------------------------------------------------- |
+| Source file (`.ts`)     | 62                                                               |
+| Test file (`.spec.ts`)  | 20                                                               |
+| Total test              | 161                                                              |
+| Core domain dirs        | 5 (`auth`, `rbac`, `tenant`, `rate-limit`, `routing`)            |
+| Core application dirs   | 5                                                                |
+| Infrastructure adapters | 2 (`yaml-tenant.repository`, `default-policy-evaluator.adapter`) |
+| Error codes             | 114 (semua domain)                                               |
+| Coverage                | Statements 97.5%, Branches 89.8%, Functions 95.9%, Lines 98.3%   |
 
 ---
 
-## 4. Contoh Alur Request (End-to-End)
+## 4. Aturan Dependency (KERAS)
 
-```text
+```
+modules/ ─────► core/ ◄───── infrastructure/
+   │              ▲
+   └──────────────┘
+   shared/ (dipakai semua, tidak import balik)
+   guards/, interceptors/, middleware/ → core + shared
+```
+
+| Layer                                        | Boleh import                          | Dilarang import               |
+| -------------------------------------------- | ------------------------------------- | ----------------------------- |
+| `core/*/domain`                              | `shared/types` saja                   | NestJS, Redis, HTTP           |
+| `core/*/application`                         | `core/*/domain`, `shared/*`           | infrastructure, modules       |
+| `infrastructure/*`                           | `core/*/domain` (implement Port)      | `core/*/application`, modules |
+| `modules/*`                                  | `core/*/application`, `core/*/domain` | infrastructure langsung       |
+| `guards/*`, `interceptors/*`, `middleware/*` | `core/*`, `shared/*`                  | —                             |
+| `shared/*`                                   | —                                     | core, modules, infrastructure |
+
+**Penegakan:** `pnpm deps:check` (dependency-cruiser).
+
+---
+
+## 5. Alur Request
+
+```
 HTTP Request
    │
    ▼
-[request-id.middleware]        → set X-Request-ID
+[RequestIdMiddleware]              set X-Request-ID
    │
    ▼
-[tenant-context.middleware]    → resolve tenant (JWT/subdomain/header)
+[TenantContextMiddleware]          resolve tenant → AsyncLocalStorage
    │
    ▼
-[auth.guard]                   → verify JWT / API Key (core/auth)
+[AuthGuard]                        (Sprint 1 #2)
    │
    ▼
-[rbac.guard]                   → cek permission (core/auth)
+[RbacGuard]                        check role / scope
    │
    ▼
-[rate-limit.guard]             → check quota (core/rate-limit → Redis adapter)
+[RateLimitGuard]                   (Sprint 1 #4)
    │
    ▼
-[proxy.controller]             → resolve route (core/routing)
-   │
-   ▼
-[idempotency interceptor]      → begin/complete (core/idempotency)
-   │
-   ▼
-[circuit-breaker]              → execute (core/circuit-breaker)
-   │
-   ▼
-[http-proxy.adapter / grpc]    → forward ke upstream
-   │
-   ▼
-[response + logging + metrics]
+[Controller]                       proxy / health / metrics
 ```
 
 ---
 
-## 5. Konvensi Penamaan
+## 6. Yang Sudah Dikerjakan vs Belum
 
-| Tipe         | Contoh                        | Keterangan                   |
-| ------------ | ----------------------------- | ---------------------------- |
-| Use Case     | `ResolveRouteUseCase`         | Satu file satu use case      |
-| Port         | `RouteRepositoryPort`         | Interface di `core/*/domain` |
-| Adapter      | `RedisRouteRepositoryAdapter` | Implementasi Port            |
-| Entity       | `Tenant`, `Route`             | Domain object                |
-| Value Object | `TenantId`, `Upstream`        | Immutable                    |
-| DTO          | `ProxyRequestDto`             | Hanya di boundary HTTP       |
-| Guard        | `AuthGuard`                   | NestJS guard                 |
-| Interceptor  | `IdempotencyInterceptor`      | NestJS interceptor           |
-| Module       | `RoutingModule`               | NestJS module                |
+### Sprint 0 — Done
 
-File naming: `kebab-case` dengan suffix tipe (`*.usecase.ts`, `*.port.ts`,
-`*.adapter.ts`, `*.guard.ts`, `*.module.ts`).
+- [x] Bootstrap NestJS 12 + Fastify + ESM
+- [x] Shared types (Result, Option, Brand, RepositoryPort, UseCase, Codec, Mapper)
+- [x] Error framework (DomainError, error codes, RFC 7807 DTO)
+- [x] Config module (Zod validation, env)
+- [x] Redis module
+- [x] Logger module
+- [x] Health controller
+- [x] Middleware module (RequestId + TenantContext)
+- [x] Lefthook + commitlint
+- [x] P0 fixes
+
+### Sprint 1 #1 — Tenant Resolution — Done
+
+- [x] TenantId VO (branded, slug validation)
+- [x] Tenant entity + repository port
+- [x] ResolveTenantUseCase (subdomain → header → JWT)
+- [x] YamlTenantRepository + ConfigRepositoryModule
+- [x] RequestContextHolder (AsyncLocalStorage)
+- [x] @CurrentTenant decorator
+
+### Sprint 1 #2 — Auth Guard JWT — Belum
+
+- [ ] TokenVerifierPort
+- [ ] JwksClient + JwtVerifierAdapter
+- [ ] VerifyTokenUseCase
+- [ ] AuthGuard (global)
+- [ ] @CurrentUser decorator (sudah ada, butuh Principal)
+- [ ] AuthModule
+
+### Sprint 1 #3 — RBAC Guard — Done
+
+- [x] Permission VO (resource:action, wildcard)
+- [x] Policy entity (allow/deny rules)
+- [x] PolicyEvaluatorPort
+- [x] CheckPermissionUseCase
+- [x] DefaultPolicyEvaluatorAdapter
+- [x] RbacGuard
+- [x] @Roles, @Scopes, @RequirePermissions decorators
+
+### Sprint 1 #4 — Rate Limit — Belum
+
+- [ ] RateLimit entity
+- [ ] RateLimitStorePort
+- [ ] SlidingWindowRateLimiter
+- [ ] RedisRateLimitAdapter
+- [ ] RateLimitGuard
+
+### Sprint 1 #5 — Proxy Engine — Belum
+
+- [ ] Route entity + RouteRepositoryPort
+- [ ] ResolveRouteUseCase
+- [ ] YamlRouteRepository
+- [ ] ProxyAdapter (undici)
+- [ ] CircuitBreaker (core circuit-breaker)
+
+### Sprint 2 — Belum
+
+- [ ] Idempotency interceptor
+- [ ] Cache interceptor
+- [ ] Observability interceptors
+
+### Sprint 3 — Belum
+
+- [ ] Metrics endpoint
+- [ ] Admin endpoint
+
+### Sprint 4 — Belum
+
+- [ ] gRPC upstream support
 
 ---
 
-## 6. Testing Strategy
+## 7. Referensi
 
-| Level       | Lokasi                 | Fokus                               |
-| ----------- | ---------------------- | ----------------------------------- |
-| Unit        | `test/unit/`           | Use Case & Value Object (mock Port) |
-| Integration | `test/integration/`    | Adapter Redis, JWT, HTTP proxy      |
-| E2E         | `test/e2e/`            | Alur request penuh via supertest    |
-| Load        | `scripts/load-test.sh` | autocannon / k6                     |
-
-Target coverage:
-
-- `core/` ≥ 90%
-- `infrastructure/` ≥ 70%
-- `modules/` ≥ 70%
-
----
-
-## 7. Dependency Eksternal yang Disetujui
-
-| Kebutuhan       | Library                | Alasan                        |
-| --------------- | ---------------------- | ----------------------------- |
-| Framework       | `@nestjs/*` v12        | Standar                       |
-| Validasi env    | `zod`                  | Standard Schema di NestJS v12 |
-| Redis           | `ioredis`              | Stabil, cluster-ready         |
-| JWT             | `jose`                 | Modern, JWKS support          |
-| Circuit Breaker | `cockatiel`            | Ringan, policy-based          |
-| Logging         | `pino`                 | Cepat, JSON native            |
-| Metrics         | `prom-client`          | Standar Prometheus            |
-| Tracing         | `@opentelemetry/*`     | Standar industri              |
-| HTTP Client     | `undici`               | Cepat, native Node            |
-| Test            | `vitest` + `supertest` | Cepat, ESM-friendly           |
-
-Setiap penambahan dependency baru **wajib** melalui ADR.
-
----
-
-## 8. Yang TIDAK Boleh Dilakukan
-
-- ❌ Import `PrismaService` di `core/`.
-- ❌ Akses `process.env` langsung di luar `config/`.
-- ❌ Menyimpan state in-memory untuk rate limit / idempotency.
-- ❌ Memakai `tenant_id` mentah sebagai Prometheus label.
-- ❌ Menaruh business logic microservice di gateway.
-- ❌ Import antar module tanpa lewat Port.
-- ❌ `console.log` — gunakan logger.
+- `docs/ARCHITECTURE.md` — arsitektur sistem
+- `docs/PRD.md` — product requirements
+- `AGENTS.md` — aturan kode untuk AI
+- `RULES.md` — clean code & error handling
