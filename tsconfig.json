@@ -23,5 +23,5 @@
     "strictPropertyInitialization": false,
     "types": ["vitest/globals", "node"]
   },
-  "exclude": ["apps"]
+  "exclude": ["apps", "dist", "node_modules"]
 }
