@@ -1,7 +1,7 @@
 import { DomainError, DomainErrorOptions } from './domain-error.js';
 import { ErrorCode } from './error-codes.js';
 
-type Opts = Omit<DomainErrorOptions, 'cause'>;
+type Opts = DomainErrorOptions;
 
 /** Factory helper: bikin class error per kode dengan pesan default. */
 const make = (code: keyof typeof ErrorCode) =>

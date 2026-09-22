@@ -13,6 +13,9 @@ coverage/
 
 # Logs
 *.log
+*.log.*
+docker-cleanup.log*
+.docker-cleanup.log*
 logs/
 
 # Checkpoint

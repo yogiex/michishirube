@@ -27,6 +27,9 @@ export function loadConfig() {
       ttl: env.RATE_LIMIT_TTL,
       max: env.RATE_LIMIT_MAX,
     },
+    tenants: {
+      filePath: env.TENANTS_FILE,
+    },
     upstream: {
       auth: env.SERVICE_AUTH_URL,
       order: env.SERVICE_ORDER_URL,
