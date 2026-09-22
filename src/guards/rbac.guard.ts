@@ -8,7 +8,7 @@ import { SCOPES_KEY } from '@/shared/decorators/scopes.decorator.js';
 import { PERMISSIONS_KEY } from '@/shared/decorators/permissions.decorator.js';
 import { IS_PUBLIC_KEY } from '@/shared/decorators/public.decorator.js';
 
-interface RequestWithPrincipal extends Request {
+interface RequestWithPrincipal extends Omit<Request, 'user'> {
   user?: Principal;
 }
 

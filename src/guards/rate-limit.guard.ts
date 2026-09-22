@@ -8,7 +8,7 @@ import { HEADERS } from '@/shared/constants/headers.js';
 import type { Principal } from '@/core/auth/domain/principal.entity.js';
 import type { TenantId } from '@/core/tenant/domain/tenant-id.vo.js';
 
-interface RequestWithAuth extends Request {
+interface RequestWithAuth extends Omit<Request, 'user'> {
   user?: Principal;
   tenantId?: TenantId;
 }
@@ -63,7 +63,7 @@ export class RateLimitGuard implements CanActivate {
     return true;
   }
 
-  private extractIp(req: Request): string {
+  private extractIp(req: RequestWithAuth): string {
     const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
     return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
   }

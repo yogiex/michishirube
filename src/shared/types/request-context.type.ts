@@ -12,7 +12,6 @@ declare global {
       id?: string;
       requestId?: string;
       tenantId?: string;
-      user?: AuthenticatedUser;
     }
   }
 }

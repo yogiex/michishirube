@@ -1,5 +1,10 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
 allowBuilds:
   lefthook: true
+  unrs-resolver: true
 
 overrides:
   undici: '>=6.28.0'
