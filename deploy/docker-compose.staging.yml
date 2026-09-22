@@ -2,14 +2,14 @@ services:
   gateway:
     build:
       target: staging
-    image: api-gateway:staging
+    image: michishirube/gateway:staging
     ports:
-      - '3000:3000'
-      - '9464:9464'
+      - '${GATEWAY_PORT:-7300}:7300'
+      - '${GATEWAY_METRICS_PORT:-7301}:9464'
     environment:
       NODE_ENV: staging
+      PORT: 7300
       LOG_LEVEL: debug
-      RATE_LIMIT_MAX: 1000
     deploy:
       replicas: 1
       resources:
@@ -25,9 +25,18 @@ services:
 
   redis:
     ports:
-      - '6379:6379'
-    command: >
-      redis-server
-      --appendonly yes
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+      - '${REDIS_PORT:-7380}:6379'
+
+  prometheus:
+    ports:
+      - '${PROMETHEUS_PORT:-7390}:9090'
+
+  grafana:
+    ports:
+      - '${GRAFANA_PORT:-7391}:3000'
+
+  jaeger:
+    ports:
+      - '${JAEGER_UI_PORT:-7392}:16686'
+      - '${OTEL_GRPC_PORT:-7317}:4317'
+      - '${OTEL_HTTP_PORT:-7318}:4318'
