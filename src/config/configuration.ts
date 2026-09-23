@@ -30,6 +30,9 @@ export function loadConfig() {
     tenants: {
       filePath: env.TENANTS_FILE,
     },
+    routes: {
+      filePath: env.ROUTES_FILE,
+    },
     upstream: {
       auth: env.SERVICE_AUTH_URL,
       order: env.SERVICE_ORDER_URL,

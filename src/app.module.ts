@@ -5,15 +5,15 @@ import { RedisModule } from './infrastructure/redis/redis.module.js';
 import { LoggerModule } from './infrastructure/observability/logger.module.js';
 import { ConfigRepositoryModule } from './infrastructure/config-repository/config-repository.module.js';
 import { RbacInfrastructureModule } from './infrastructure/rbac/rbac-infrastructure.module.js';
+import { RateLimitInfrastructureModule } from './infrastructure/rate-limit/rate-limit-infrastructure.module.js';
 import { RequestContextModule } from './shared/context/request-context.module.js';
 import { TenantModule } from './core/tenant/tenant.module.js';
 import { RbacModule } from './core/rbac/rbac.module.js';
 import { RateLimitModule } from './core/rate-limit/rate-limit.module.js';
-import { RATE_LIMITER } from './core/rate-limit/domain/rate-limiter.port.js';
-import { RedisSlidingWindowAdapter } from './infrastructure/rate-limit/redis-sliding-window.adapter.js';
 import { RateLimitGuard } from './guards/rate-limit.guard.js';
 import { MiddlewareModule } from './middleware/middleware.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { ProxyModule } from './modules/proxy/proxy.module.js';
 
 @Module({
   imports: [
@@ -22,17 +22,15 @@ import { HealthModule } from './modules/health/health.module.js';
     RedisModule,
     ConfigRepositoryModule,
     RbacInfrastructureModule,
+    RateLimitInfrastructureModule,
     RequestContextModule,
     TenantModule,
     RbacModule,
     RateLimitModule,
     MiddlewareModule,
     HealthModule,
+    ProxyModule,
   ],
-  providers: [
-    RedisSlidingWindowAdapter,
-    { provide: RATE_LIMITER, useExisting: RedisSlidingWindowAdapter },
-    { provide: APP_GUARD, useClass: RateLimitGuard },
-  ],
+  providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }],
 })
 export class AppModule {}

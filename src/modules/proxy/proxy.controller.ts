@@ -6,7 +6,7 @@ import { ProxyService } from './proxy.service.js';
 export class ProxyController {
   constructor(private readonly proxy: ProxyService) {}
 
-  @All('/api/{*splat}')
+  @All('/api/*')
   @HttpCode(200)
   async handle(@Req() req: FastifyRequest, @Res() reply: FastifyReply): Promise<void> {
     let body: Buffer | undefined;

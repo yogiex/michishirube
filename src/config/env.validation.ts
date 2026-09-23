@@ -20,6 +20,7 @@ export const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1000),
 
   TENANTS_FILE: z.string().min(1).default('./config/tenants.yaml'),
+  ROUTES_FILE: z.string().min(1).default('./config/routes.yaml'),
 
   SERVICE_AUTH_URL: z.string().url().default('http://localhost:4001'),
   SERVICE_ORDER_URL: z.string().url().default('http://localhost:4002'),

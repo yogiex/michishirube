@@ -15,6 +15,19 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.enableShutdownHooks();
 
+  // Parser catch-all: body non-JSON (text/plain, form, dll) diterima sebagai
+  // Buffer alih-alih 415. Parser bawaan application/json tetap berprioritas.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      '*',
+      { parseAs: 'buffer' },
+      (_req: unknown, body: Buffer, done: (err: Error | null, result?: Buffer) => void) => {
+        done(null, body);
+      },
+    );
+
   const config = app.get(ConfigService);
   const port = config.get<number>('app.port') ?? 3000;
 
