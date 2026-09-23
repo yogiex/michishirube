@@ -2,236 +2,364 @@
 
 ## Michishirube — Hexagonal + Modular Monolith
 
-| Field               | Value                                                                |
-| ------------------- | -------------------------------------------------------------------- |
-| Versi               | 1.1.0                                                                |
-| Status              | Approved                                                             |
-| Pendekatan          | Hexagonal (Ports & Adapters) + Modular Monolith                      |
-| Terakhir Diperbarui | 2026-09-22                                                           |
-| Dokumen Terkait     | `PRD.md`, `ARCHITECTURE.md`, `TECHSTACK.md`, `RULES.md`, `AGENTS.md` |
+| Field               | Value                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| Versi               | 2.0.0                                                                                 |
+| Status              | Approved                                                                              |
+| Pendekatan          | Hexagonal (Ports & Adapters) + Modular Monolith                                       |
+| Terakhir Diperbarui | 2026-09-23                                                                            |
+| Sprint Terakhir     | Sprint 3A (Admin API) + Dashboard + Security Hardening                                |
+| Dokumen Terkait     | `PRD.md`, `ARCHITECTURE.md`, `TECHSTACK.md`, `RULES.md`, `AGENTS.md`, `RESILIENCE.md` |
 
 ---
 
 ## 1. Filosofi Struktur
 
-Michishirube adalah **infrastruktur**, bukan domain bisnis. Karena itu:
+Michishirube adalah **infrastruktur gateway**, bukan domain bisnis. Karena itu:
 
 - **DDD penuh tidak diterapkan** — tidak ada Aggregate bisnis, Domain Event
 - **Hexagonal (Ports & Adapters)** — core murni, adapter bisa ditukar
 - Setiap **kapabilitas gateway** = satu module (bounded context ringan)
-- **Stateless** — tidak ada state lokal yang penting; semua di Redis + YAML
+- **Stateless** — state di Redis + YAML config, bukan di memory
+- **Monorepo** — gateway (backend) + dashboard (frontend) dalam satu repo
+
+### Aturan Emas
+
+1. `core/` **tidak boleh** import infra, NestJS HTTP, atau driver DB
+2. `core/` = pure TypeScript + interface (Port)
+3. `infrastructure/` mengimplementasikan Port dari `core/`
+4. `modules/` = adapter HTTP (controller)
+5. `shared/` = cross-cutting, tidak boleh import `core/`
 
 ---
 
-## 2. Struktur Folder (Sprint 0 + Sprint 1 #1-3)
+## 2. Struktur Folder Lengkap
 
 ```text
 michishirube/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── PRD.md
-│   ├── STRUCTURE.md
-│   └── ADR/
-│       ├── 0002-hexagonal-over-ddd.md
-│       └── 0003-redis-as-only-state.md
 │
-├── src/
-│   ├── main.ts
-│   ├── app.module.ts
+├── apps/
+│   └── dashboard/                        # Next.js Admin Dashboard
+│       ├── app/
+│       │   ├── (auth)/
+│       │   │   ├── layout.tsx
+│       │   │   └── login/
+│       │   │       └── page.tsx          # Login 2 kolom (info + form)
+│       │   ├── (dashboard)/
+│       │   │   ├── layout.tsx            # Shell + AuthGuard redirect
+│       │   │   ├── page.tsx              # Overview
+│       │   │   ├── routes/page.tsx       # Routes list
+│       │   │   ├── tenants/page.tsx      # Tenants list
+│       │   │   ├── api-keys/page.tsx     # API Keys + modal
+│       │   │   ├── config/page.tsx       # YAML viewer
+│       │   │   ├── metrics/page.tsx      # Charts
+│       │   │   ├── audit/page.tsx        # Audit log
+│       │   │   └── settings/page.tsx     # Settings tabs
+│       │   ├── globals.css
+│       │   ├── layout.tsx
+│       │   └── providers.tsx             # QueryClient + ThemeProvider
+│       ├── components/
+│       │   ├── auth/login-form.tsx       # Form login + Zod
+│       │   ├── layout/
+│       │   │   ├── sidebar.tsx           # Navigation sidebar
+│       │   │   ├── topbar.tsx            # Top bar + user menu
+│       │   │   └── shell.tsx             # Layout wrapper
+│       │   └── ui/                       # shadcn/ui components
+│       ├── lib/
+│       │   ├── api-client.ts             # HTTP client + adminApi
+│       │   ├── auth.ts                   # Zustand auth store
+│       │   ├── mock-data.ts              # Mock data (dev)
+│       │   └── utils.ts                  # cn, formatters
+│       ├── types/index.ts                # Shared types
+│       ├── middleware.ts                 # Route protection
+│       ├── next.config.ts                # standalone output
+│       ├── package.json
+│       ├── tailwind.config.ts
+│       ├── tsconfig.json
+│       ├── Dockerfile                    # Multi-stage (dev/build/prod)
+│       ├── .dockerignore
+│       └── .env.example
+│
+├── docs/
+│   ├── PRD.md                            # Product Requirements
+│   ├── ARCHITECTURE.md                   # Arsitektur sistem
+│   ├── STRUCTURE.md                      # Dokumen ini
+│   ├── TECHSTACK.md                      # Tech stack
+│   ├── RESILIENCE.md                     # Race condition, deadlock, SPOF
+│   └── ADR/                              # Architecture Decision Records
+│       ├── 0002-hexagonal-over-ddd.md
+│       ├── 0003-redis-as-only-state.md
+│       └── 0004-no-db-in-gateway.md
+│
+├── src/                                  # Gateway (NestJS)
+│   ├── main.ts                           # Bootstrap Fastify + Helmet + CORS
+│   ├── app.module.ts                     # Root module
 │   │
-│   ├── config/
-│   │   ├── config.module.ts
-│   │   ├── configuration.ts
-│   │   ├── env.validation.ts
-│   │   └── __tests__/
-│   │       └── env.validation.spec.ts
+│   ├── config/                           # Konfigurasi & validasi env
+│   │   ├── config.module.ts              # Global ConfigModule
+│   │   ├── configuration.ts              # Map env → typed config
+│   │   ├── env.validation.ts             # Zod schema + prod guard
+│   │   └── __tests__/env.validation.spec.ts
 │   │
-│   ├── core/
-│   │   ├── auth/
-│   │   │   ├── domain/
-│   │   │   │   ├── principal.entity.ts
-│   │   │   │   └── role.vo.ts
-│   │   │   ├── application/              # (belum, Sprint 1 #2)
-│   │   │   └── __tests__/
-│   │   │       └── principal.entity.spec.ts
+│   ├── core/                             # Domain inti (pure, no infra)
 │   │   │
-│   │   ├── rbac/
+│   │   ├── tenant/                       # Sprint 1 #1
 │   │   │   ├── domain/
-│   │   │   │   ├── permission.vo.ts
+│   │   │   │   ├── tenant.entity.ts
+│   │   │   │   ├── tenant-id.vo.ts       # Branded string
+│   │   │   │   └── tenant.repository.port.ts
+│   │   │   ├── application/
+│   │   │   │   ├── resolve-tenant.usecase.ts
+│   │   │   │   ├── list-tenants.usecase.ts
+│   │   │   │   ├── create-tenant.usecase.ts
+│   │   │   │   ├── update-tenant.usecase.ts
+│   │   │   │   └── delete-tenant.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   └── tenant.module.ts
+│   │   │
+│   │   ├── auth/                         # Sprint 1 #2
+│   │   │   ├── domain/
+│   │   │   │   ├── principal.entity.ts   # userId, tenantId, roles, scopes
+│   │   │   │   ├── role.vo.ts            # Role + Scope VO
+│   │   │   │   └── token-verifier.port.ts
+│   │   │   ├── application/
+│   │   │   │   └── verify-token.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   └── auth.module.ts
+│   │   │
+│   │   ├── rbac/                         # Sprint 1 #3
+│   │   │   ├── domain/
+│   │   │   │   ├── permission.vo.ts      # resource:action + wildcard
 │   │   │   │   ├── policy.entity.ts
 │   │   │   │   └── policy-evaluator.port.ts
 │   │   │   ├── application/
 │   │   │   │   └── check-permission.usecase.ts
 │   │   │   ├── __tests__/
-│   │   │   │   ├── check-permission.usecase.spec.ts
-│   │   │   │   ├── permission.vo.spec.ts
-│   │   │   │   └── policy.entity.spec.ts
 │   │   │   └── rbac.module.ts
 │   │   │
-│   │   ├── tenant/
+│   │   ├── rate-limit/                   # Sprint 1 #4
 │   │   │   ├── domain/
-│   │   │   │   ├── tenant.entity.ts
-│   │   │   │   ├── tenant-id.vo.ts
-│   │   │   │   └── tenant.repository.port.ts
+│   │   │   │   ├── quota.vo.ts           # limit + windowSec
+│   │   │   │   └── rate-limiter.port.ts
 │   │   │   ├── application/
-│   │   │   │   └── resolve-tenant.usecase.ts
+│   │   │   │   └── check-quota.usecase.ts
 │   │   │   ├── __tests__/
-│   │   │   │   ├── resolve-tenant.usecase.spec.ts
-│   │   │   │   └── tenant-id.vo.spec.ts
-│   │   │   └── tenant.module.ts
+│   │   │   └── rate-limit.module.ts
 │   │   │
-│   │   ├── rate-limit/                   # (Sprint 1 #4 — stub)
+│   │   ├── routing/                      # Sprint 1 #5 + Admin API
 │   │   │   ├── domain/
-│   │   │   └── application/
+│   │   │   │   ├── route.entity.ts       # Route + Zod schema
+│   │   │   │   └── route.repository.port.ts
+│   │   │   ├── application/
+│   │   │   │   ├── list-routes.usecase.ts
+│   │   │   │   ├── create-route.usecase.ts
+│   │   │   │   ├── update-route.usecase.ts
+│   │   │   │   ├── delete-route.usecase.ts
+│   │   │   │   └── reload-routes.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   └── routing.module.ts
 │   │   │
-│   │   ├── routing/                      # (Sprint 1 #5 — stub)
+│   │   ├── api-key/                      # Sprint 3A (Admin API)
 │   │   │   ├── domain/
-│   │   │   └── application/
+│   │   │   │   ├── api-key.entity.ts     # IssuedApiKey + Zod
+│   │   │   │   └── api-key.repository.port.ts
+│   │   │   ├── application/
+│   │   │   │   ├── list-api-keys.usecase.ts
+│   │   │   │   ├── issue-api-key.usecase.ts   # Argon2id hashing
+│   │   │   │   └── revoke-api-key.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   └── api-key.module.ts
 │   │   │
-│   │   ├── idempotency/                  # (Sprint 2 — stub)
-│   │   ├── circuit-breaker/              # (Sprint 2 — stub)
-│   │   └── cache/                        # (Sprint 2 — stub)
+│   │   ├── audit/                        # Sprint 3A
+│   │   │   ├── domain/
+│   │   │   │   ├── audit-entry.entity.ts
+│   │   │   │   └── audit.repository.port.ts
+│   │   │   ├── application/
+│   │   │   │   ├── list-audit.usecase.ts
+│   │   │   │   └── record-audit.usecase.ts
+│   │   │   ├── __tests__/
+│   │   │   └── audit.module.ts
+│   │   │
+│   │   ├── idempotency/                  # Sprint 2 (stub)
+│   │   ├── circuit-breaker/              # Sprint 2 (stub)
+│   │   └── cache/                        # Sprint 2 (stub)
 │   │
-│   ├── infrastructure/
+│   ├── infrastructure/                   # Adapter (implement Port)
 │   │   ├── redis/
 │   │   │   ├── redis.constants.ts
-│   │   │   └── redis.module.ts
+│   │   │   ├── redis.module.ts
+│   │   │   ├── redis-api-key.repository.ts    # RedisApiKeyRepository
+│   │   │   └── redis-audit.repository.ts      # RedisAuditRepository
+│   │   │
+│   │   ├── jwt/
+│   │   │   ├── jwt.constants.ts
+│   │   │   ├── jwks.client.ts            # createRemoteJWKSet
+│   │   │   ├── jwt-verifier.adapter.ts   # jose + JWKS
+│   │   │   └── __tests__/
 │   │   │
 │   │   ├── rbac/
 │   │   │   ├── default-policy-evaluator.adapter.ts
 │   │   │   ├── rbac-infrastructure.module.ts
 │   │   │   └── __tests__/
-│   │   │       └── default-policy-evaluator.adapter.spec.ts
+│   │   │
+│   │   ├── rate-limit/
+│   │   │   ├── rate-limit.constants.ts
+│   │   │   ├── redis-sliding-window.adapter.ts
+│   │   │   ├── lua/sliding-window.lua    # Atomic INCR + EXPIRE
+│   │   │   └── __tests__/
 │   │   │
 │   │   ├── config-repository/
 │   │   │   ├── config-repository.module.ts
-│   │   │   ├── yaml-tenant.repository.ts
+│   │   │   ├── yaml-tenant.repository.ts # CRUD + hot reload
+│   │   │   ├── yaml-route.repository.ts  # CRUD + hot reload
 │   │   │   └── __tests__/
-│   │   │       └── yaml-tenant.repository.spec.ts
+│   │   │
+│   │   ├── security/
+│   │   │   └── token-revocation.service.ts   # JTI + user blacklist
 │   │   │
 │   │   ├── observability/
-│   │   │   └── logger.module.ts
+│   │   │   └── logger.module.ts          # Pino + redact
 │   │   │
-│   │   ├── jwt/                          # (Sprint 1 #2 — stub)
-│   │   ├── http/                         # (Sprint 1 #5 — stub)
-│   │   └── grpc/                         # (Sprint 4 — stub)
+│   │   ├── http/                         # Sprint 1 #5 (stub)
+│   │   └── grpc/                         # Sprint 4 (stub)
 │   │
-│   ├── modules/
+│   ├── modules/                          # Entry point HTTP
 │   │   ├── health/
-│   │   │   ├── health.controller.ts
+│   │   │   ├── health.controller.ts      # /health, /health/live, /health/ready
 │   │   │   └── health.module.ts
-│   │   ├── proxy/                        # (Sprint 1 #5 — stub)
-│   │   ├── metrics/                      # (Sprint 3 — stub)
-│   │   └── admin/                        # (Sprint 3 — stub)
+│   │   │
+│   │   ├── admin/                        # Sprint 3A
+│   │   │   ├── routes-admin.controller.ts
+│   │   │   ├── tenants-admin.controller.ts
+│   │   │   ├── api-keys-admin.controller.ts
+│   │   │   ├── audit-admin.controller.ts
+│   │   │   ├── admin.module.ts
+│   │   │   ├── dto/
+│   │   │   │   ├── route.dto.ts
+│   │   │   │   ├── tenant.dto.ts
+│   │   │   │   ├── api-key.dto.ts
+│   │   │   │   ├── common.dto.ts
+│   │   │   │   └── index.ts
+│   │   │   └── __tests__/
+│   │   │
+│   │   ├── proxy/                        # Sprint 1 #5 (stub)
+│   │   └── metrics/                      # Sprint 3 (stub)
 │   │
-│   ├── guards/
-│   │   ├── rbac.guard.ts
+│   ├── guards/                           # Global guards
+│   │   ├── auth.guard.ts                 # Global, urutan #1
+│   │   ├── rbac.guard.ts                 # Global, urutan #2
+│   │   ├── ip-allowlist.guard.ts         # Global, urutan #3 (admin)
+│   │   ├── rate-limit.guard.ts           # Global, urutan #4
 │   │   └── __tests__/
-│   │       └── rbac.guard.spec.ts
 │   │
-│   ├── interceptors/                     # (Sprint 2 — empty)
+│   ├── interceptors/                     # Sprint 2 (empty)
 │   │
 │   ├── middleware/
 │   │   ├── middleware.module.ts
-│   │   ├── request-id.middleware.ts
-│   │   ├── tenant-context.middleware.ts
+│   │   ├── request-id.middleware.ts      # X-Request-ID
+│   │   ├── tenant-context.middleware.ts  # Resolve tenant
 │   │   └── __tests__/
-│   │       ├── request-id.middleware.spec.ts
-│   │       └── tenant-context.middleware.spec.ts
 │   │
-│   └── shared/
+│   └── shared/                           # Cross-cutting
 │       ├── context/
-│       │   ├── index.ts
-│       │   ├── request-context.ts
+│       │   ├── request-context.ts        # AsyncLocalStorage
 │       │   ├── request-context.module.ts
+│       │   ├── index.ts
 │       │   └── __tests__/
-│       │       └── request-context.spec.ts
 │       │
 │       ├── decorators/
 │       │   ├── current-tenant.decorator.ts
 │       │   ├── current-user.decorator.ts
-│       │   ├── permissions.decorator.ts
-│       │   ├── public.decorator.ts
-│       │   ├── roles.decorator.ts
-│       │   ├── scopes.decorator.ts
+│       │   ├── public.decorator.ts       # @Public()
+│       │   ├── roles.decorator.ts        # @Roles()
+│       │   ├── scopes.decorator.ts       # @Scopes()
+│       │   ├── permissions.decorator.ts  # @RequirePermissions()
+│       │   ├── rate-limit.decorator.ts   # @RateLimit()
 │       │   └── index.ts
 │       │
 │       ├── errors/
-│       │   ├── domain-error.ts
-│       │   ├── error-catalog.ts
-│       │   ├── error-codes.ts
-│       │   ├── error.factory.ts
-│       │   ├── error-response.dto.ts
-│       │   ├── gateway-error.ts
-│       │   ├── http-exception.filter.ts
+│       │   ├── error-codes.ts            # 114 kode GW_*
+│       │   ├── error-catalog.ts          # Kode → HTTP + retryable
+│       │   ├── domain-error.ts           # Base error class
+│       │   ├── gateway-error.ts          # Semua error kelas
+│       │   ├── error-response.dto.ts     # RFC 7807
+│       │   ├── error.factory.ts          # Build problem+json
+│       │   ├── http-exception.filter.ts  # Global filter
 │       │   ├── index.ts
 │       │   └── __tests__/
-│       │       └── http-exception.filter.spec.ts
 │       │
 │       ├── pipes/
 │       │   ├── zod-validation.pipe.ts
 │       │   └── index.ts
 │       │
-│       ├── types/
-│       │   ├── branded.type.ts
-│       │   ├── codec.port.ts
+│       ├── security/                     # Sprint 3A hardening
+│       │   ├── ssrf-guard.ts             # SSRF + DNS rebinding
+│       │   ├── redact.ts                 # Log redact paths
+│       │   └── __tests__/ssrf-guard.spec.ts
+│       │
+│       ├── types/                        # Generic reusable
+│       │   ├── result.type.ts            # Result<T, E>
+│       │   ├── option.type.ts            # Option<T>
+│       │   ├── branded.type.ts           # Brand<T, B>
 │       │   ├── entity.type.ts
-│       │   ├── mapper.port.ts
-│       │   ├── option.type.ts
-│       │   ├── pagination.type.ts
-│       │   ├── repository.port.ts
-│       │   ├── request-context.type.ts
-│       │   ├── result.type.ts
-│       │   ├── use-case.port.ts
 │       │   ├── value-object.ts
+│       │   ├── codec.port.ts
+│       │   ├── mapper.port.ts
+│       │   ├── repository.port.ts
+│       │   ├── use-case.port.ts
+│       │   ├── pagination.type.ts
+│       │   ├── request-context.type.ts
 │       │   ├── index.ts
 │       │   └── __tests__/
-│       │       ├── branded.spec.ts
-│       │       ├── misc.spec.ts
-│       │       ├── option.spec.ts
-│       │       ├── pagination.spec.ts
-│       │       ├── result.spec.ts
-│       │       └── value-object.spec.ts
 │       │
-│       ├── constants/                    # (empty)
-│       └── utils/                        # (empty)
+│       ├── constants/
+│       │   └── headers.ts                # X-Request-ID, X-Tenant-ID, dll
+│       │
+│       └── utils/                        # (empty, siap diisi)
 │
 ├── test/
-│   └── app.e2e-spec.ts
+│   ├── app.e2e-spec.ts
+│   ├── fixtures/jwt.fixture.ts           # generateTestKeys, signTestToken
+│   ├── unit/                             # (siap diisi)
+│   ├── functional/                       # (siap diisi)
+│   └── security/                         # (siap diisi)
 │
-├── config/
-│   └── tenants.yaml
+├── config/                               # Runtime config (YAML)
+│   ├── tenants.yaml                      # Tenant definitions
+│   └── routes.yaml                       # Route definitions
 │
 ├── deploy/
-│   ├── docker-compose.yml
-│   ├── docker-compose.dev.yml
+│   ├── Dockerfile                        # Gateway multi-stage
+│   ├── .dockerignore
+│   ├── .env.docker.example
+│   ├── README.md                         # Port map + usage
+│   ├── docker-compose.yml                # Base
+│   ├── docker-compose.dev.yml            # Dev override
 │   ├── docker-compose.staging.yml
 │   ├── docker-compose.prod.yml
-│   ├── .env.docker.example
-│   ├── Dockerfile
-│   ├── .dockerignore
-│   ├── README.md
-│   ├── prometheus/
-│   │   └── prometheus.yml
-│   ├── grafana/
-│   │   └── provisioning/
-│   │       └── datasources/
-│   │           └── prometheus.yml
-│   └── k8s/
+│   ├── prometheus/prometheus.yml
+│   ├── grafana/provisioning/datasources/prometheus.yml
+│   └── k8s/                              # (siap diisi)
 │
 ├── scripts/
-│   ├── checkpoints.sh
-│   ├── compose.sh
-│   ├── dev.sh
-│   ├── p0-fix.sh
+│   ├── checkpoints.sh                    # Audit kesehatan project
+│   ├── compose.sh                        # Wrapper docker compose
+│   ├── dev.sh                            # Start Redis + gateway
+│   ├── docker-cleanup.sh                 # Soft/aggressive/nuclear
+│   ├── docker-rollback.sh                # Rollback image tag
+│   ├── docker-stats.sh                   # Disk usage report
+│   ├── p0-fix.sh                         # Auto-fix P0
 │   └── setup-folders.sh
 │
-├── AGENTS.md
-├── RULES.md
+├── .github/workflows/
+│   └── security.yml                      # Audit + Trivy + Gitleaks
+│
+├── AGENTS.md                             # Aturan untuk AI agent
+├── RULES.md                              # Clean code & error handling
 ├── CONTRIBUTING.md
 ├── LICENSE
 ├── README.md
-├── checkpoint-report.txt
+├── checkpoint-report.txt                 # (gitignored)
 ├── commitlint.config.cjs
 ├── .dependency-cruiser.cjs
 ├── .editorconfig
@@ -248,7 +376,7 @@ michishirube/
 ├── nest-cli.json
 ├── package.json
 ├── pnpm-lock.yaml
-├── pnpm-workspace.yaml
+├── pnpm-workspace.yaml                   # Monorepo workspace
 ├── tsconfig.build.json
 ├── tsconfig.json
 ├── vitest.config.e2e.ts
@@ -257,18 +385,135 @@ michishirube/
 
 ---
 
-## 3. Statistik (Sprint 0 + 1 #1-3)
+## 3. Detail Per Folder — Konteks untuk AI
 
-| Metrik                  | Jumlah                                                           |
-| ----------------------- | ---------------------------------------------------------------- |
-| Source file (`.ts`)     | 62                                                               |
-| Test file (`.spec.ts`)  | 20                                                               |
-| Total test              | 161                                                              |
-| Core domain dirs        | 5 (`auth`, `rbac`, `tenant`, `rate-limit`, `routing`)            |
-| Core application dirs   | 5                                                                |
-| Infrastructure adapters | 2 (`yaml-tenant.repository`, `default-policy-evaluator.adapter`) |
-| Error codes             | 114 (semua domain)                                               |
-| Coverage                | Statements 97.5%, Branches 89.8%, Functions 95.9%, Lines 98.3%   |
+### `apps/dashboard/`
+
+**Tujuan:** Admin UI untuk konfigurasi gateway.
+
+| Aspek       | Detail                                                  |
+| ----------- | ------------------------------------------------------- |
+| Framework   | Next.js 16 (App Router)                                 |
+| Styling     | Tailwind CSS v4 + shadcn/ui                             |
+| State       | Zustand (auth) + TanStack Query (server state)          |
+| Port        | **7400**                                                |
+| Auth        | JWT di localStorage (⚠️ pindah ke httpOnly cookie = P1) |
+| Demo login  | `admin@michishirube.dev` / `admin12345`                 |
+| Data source | Saat ini mock, akan pindah ke Admin API                 |
+
+**Aturan AI saat edit dashboard:**
+
+- Gunakan **server components** untuk data fetching jika memungkinkan
+- `'use client'` hanya jika butuh interaktivitas (form, chart, state)
+- Semua API call lewat `lib/api-client.ts` — jangan `fetch()` langsung
+- Form wajib pakai React Hook Form + Zod
+- Tabel wajib pakai TanStack Table
+- Toast pakai `sonner`
+
+### `src/core/*/domain/`
+
+**Aturan KERAS:**
+
+- Pure TypeScript — **JANGAN** import `@nestjs/*`, `ioredis`, `undici`
+- Entity = `interface`, immutable, `readonly` untuk semua field
+- Value Object = class dengan validasi di constructor
+- Port = interface tanpa implementasi
+- Zod schema untuk validasi input (`RouteSchema`, `IssueApiKeySchema`)
+
+### `src/core/*/application/`
+
+**Aturan:**
+
+- 1 file = 1 use case
+- Class + `@Injectable()` dari NestJS (boleh)
+- Return `Result<T, E>` atau throw `DomainError`
+- **Tidak** akses infra langsung — lewat Port
+- Constructor injection untuk Port
+
+### `src/infrastructure/*/`
+
+**Aturan:**
+
+- Implement Port dari `core/`
+- Boleh import `jose`, `ioredis`, `undici`, `yaml`, `argon2`
+- Prefix: `redis-*`, `yaml-*`, `*-adapter.ts`
+- Semua adapter punya test dengan mock
+- **JANGAN** akses `core/*/application` langsung
+
+### `src/modules/*/`
+
+**Aturan:**
+
+- Controller HTTP (NestJS)
+- Semua endpoint admin **wajib** `@Roles('admin')` + `@Scopes('admin:*')`
+- Validasi input pakai `@Body(new ZodValidationPipe(schema))`
+- Audit setiap mutation via `RecordAuditUseCase`
+- Rate limit admin: `@RateLimit({ ip: { limit: 30, windowSec: 60 } })`
+
+### `src/guards/`
+
+**Urutan WAJIB (di `app.module.ts`):**
+
+```
+1. AuthGuard         → verify JWT, attach principal
+2. RbacGuard         → check role + scope
+3. IpAllowlistGuard  → admin IP whitelist (production)
+4. RateLimitGuard    → cek kuota (butuh tenant + user)
+```
+
+**JANGAN** ubah urutan — dependency antar guard.
+
+### `src/shared/security/`
+
+**Fungsi:**
+
+- `ssrf-guard.ts` — validasi URL upstream, block private IP, DNS rebinding
+- `redact.ts` — daftar path yang di-redact di log
+
+**Aturan:** setiap kali tambah field sensitif (password, token, key), update `REDACT_PATHS`.
+
+### `src/shared/errors/`
+
+**Aturan:**
+
+- Semua error code ada di `ErrorCode` enum (114 kode)
+- Format: `GW_<DOMAIN>_<REASON>`
+- Response: **RFC 7807** (`application/problem+json`)
+- **JANGAN** `throw new Error()` langsung — pakai `DomainError` subclass
+- 5xx critical punya `hideDetailInProd: true`
+
+### `config/`
+
+**Runtime config, bukan kode:**
+
+- `tenants.yaml` — daftar tenant
+- `routes.yaml` — daftar route
+
+**Aturan:**
+
+- Hot reload via `POST /admin/routes/reload`
+- Validasi Zod saat load
+- **JANGAN** hardcode nilai di kode
+
+### `deploy/`
+
+**Port map (uncommon 73xx/74xx):**
+
+| Service         |     Port |
+| --------------- | -------: |
+| Gateway HTTP    |     7300 |
+| Gateway Debug   |     7329 |
+| Gateway Metrics |     7301 |
+| **Dashboard**   | **7400** |
+| Redis           |     7380 |
+| Redis Commander |     7381 |
+| PgBouncer       |     7382 |
+| PostgreSQL      |     7383 |
+| Prometheus      |     7390 |
+| Grafana         |     7391 |
+| Jaeger          |     7392 |
+| OTel gRPC       |     7317 |
+| OTel HTTP       |     7318 |
 
 ---
 
@@ -284,12 +529,14 @@ modules/ ─────► core/ ◄───── infrastructure/
 
 | Layer                                        | Boleh import                          | Dilarang import               |
 | -------------------------------------------- | ------------------------------------- | ----------------------------- |
-| `core/*/domain`                              | `shared/types` saja                   | NestJS, Redis, HTTP           |
+| `core/*/domain`                              | `shared/types`, `shared/errors`       | NestJS, Redis, HTTP, Zod (*)  |
 | `core/*/application`                         | `core/*/domain`, `shared/*`           | infrastructure, modules       |
 | `infrastructure/*`                           | `core/*/domain` (implement Port)      | `core/*/application`, modules |
 | `modules/*`                                  | `core/*/application`, `core/*/domain` | infrastructure langsung       |
 | `guards/*`, `interceptors/*`, `middleware/*` | `core/*`, `shared/*`                  | —                             |
-| `shared/*`                                   | —                                     | core, modules, infrastructure |
+| `shared/*`                                   | `shared/*` saja                       | core, modules, infrastructure |
+
+(*) Zod **diizinkan** di `core/*/domain` untuk schema validasi value object.
 
 **Penegakan:** `pnpm deps:check` (dependency-cruiser).
 
@@ -307,99 +554,155 @@ HTTP Request
 [TenantContextMiddleware]          resolve tenant → AsyncLocalStorage
    │
    ▼
-[AuthGuard]                        (Sprint 1 #2)
+[AuthGuard]                        verify JWT → attach principal
    │
    ▼
 [RbacGuard]                        check role / scope
    │
    ▼
-[RateLimitGuard]                   (Sprint 1 #4)
+[IpAllowlistGuard]                 admin IP check (production)
    │
    ▼
-[Controller]                       proxy / health / metrics
+[RateLimitGuard]                   Redis sliding window
+   │
+   ▼
+[Controller]                       admin / proxy / health / metrics
+   │
+   ▼
+[UseCase]                          logic inti
+   │
+   ▼
+[Port] ──► [Adapter: Redis / YAML / HTTP]
 ```
 
 ---
 
-## 6. Yang Sudah Dikerjakan vs Belum
+## 6. Alur Admin API
 
-### Sprint 0 — Done
-
-- [x] Bootstrap NestJS 12 + Fastify + ESM
-- [x] Shared types (Result, Option, Brand, RepositoryPort, UseCase, Codec, Mapper)
-- [x] Error framework (DomainError, error codes, RFC 7807 DTO)
-- [x] Config module (Zod validation, env)
-- [x] Redis module
-- [x] Logger module
-- [x] Health controller
-- [x] Middleware module (RequestId + TenantContext)
-- [x] Lefthook + commitlint
-- [x] P0 fixes
-
-### Sprint 1 #1 — Tenant Resolution — Done
-
-- [x] TenantId VO (branded, slug validation)
-- [x] Tenant entity + repository port
-- [x] ResolveTenantUseCase (subdomain → header → JWT)
-- [x] YamlTenantRepository + ConfigRepositoryModule
-- [x] RequestContextHolder (AsyncLocalStorage)
-- [x] @CurrentTenant decorator
-
-### Sprint 1 #2 — Auth Guard JWT — Belum
-
-- [ ] TokenVerifierPort
-- [ ] JwksClient + JwtVerifierAdapter
-- [ ] VerifyTokenUseCase
-- [ ] AuthGuard (global)
-- [ ] @CurrentUser decorator (sudah ada, butuh Principal)
-- [ ] AuthModule
-
-### Sprint 1 #3 — RBAC Guard — Done
-
-- [x] Permission VO (resource:action, wildcard)
-- [x] Policy entity (allow/deny rules)
-- [x] PolicyEvaluatorPort
-- [x] CheckPermissionUseCase
-- [x] DefaultPolicyEvaluatorAdapter
-- [x] RbacGuard
-- [x] @Roles, @Scopes, @RequirePermissions decorators
-
-### Sprint 1 #4 — Rate Limit — Belum
-
-- [ ] RateLimit entity
-- [ ] RateLimitStorePort
-- [ ] SlidingWindowRateLimiter
-- [ ] RedisRateLimitAdapter
-- [ ] RateLimitGuard
-
-### Sprint 1 #5 — Proxy Engine — Belum
-
-- [ ] Route entity + RouteRepositoryPort
-- [ ] ResolveRouteUseCase
-- [ ] YamlRouteRepository
-- [ ] ProxyAdapter (undici)
-- [ ] CircuitBreaker (core circuit-breaker)
-
-### Sprint 2 — Belum
-
-- [ ] Idempotency interceptor
-- [ ] Cache interceptor
-- [ ] Observability interceptors
-
-### Sprint 3 — Belum
-
-- [ ] Metrics endpoint
-- [ ] Admin endpoint
-
-### Sprint 4 — Belum
-
-- [ ] gRPC upstream support
+```
+Dashboard (Next.js :7400)
+   │
+   │ HTTP + JWT (role: admin)
+   ▼
+Admin API (:7300/admin/*)
+   │
+   ├─► RoutesAdminController   → RoutingModule → YamlRouteRepository → routes.yaml
+   ├─► TenantsAdminController  → TenantModule → YamlTenantRepository → tenants.yaml
+   ├─► ApiKeysAdminController  → ApiKeyModule → RedisApiKeyRepository → Redis
+   ├─► AuditAdminController    → AuditModule → RedisAuditRepository → Redis
+   └─► Setiap mutation → RecordAuditUseCase → audit log
+```
 
 ---
 
-## 7. Referensi
+## 7. Statistik (Setelah Sprint 3A)
+
+| Metrik                                |                                                                           Jumlah |
+| ------------------------------------- | -------------------------------------------------------------------------------: |
+| Source file gateway (`.ts`)           |                                                                              ~90 |
+| Source file dashboard (`.tsx`, `.ts`) |                                                                              ~30 |
+| Test file gateway                     |                                                                              ~30 |
+| Total test                            |                                                                             ~200 |
+| Core domain context                   | 8 (`auth`, `rbac`, `tenant`, `rate-limit`, `routing`, `api-key`, `audit`, +stub) |
+| Infrastructure adapter                |                          6 (redis, jwt, rbac, rate-limit, config-repo, security) |
+| Error codes                           |                                                                              114 |
+| Endpoint admin                        |                                                                               13 |
+| Halaman dashboard                     |                                                                                9 |
+
+---
+
+## 8. Status Sprint
+
+### Sprint 0 — Done ✅
+
+- Bootstrap NestJS 12 + Fastify + ESM
+- Shared types (Result, Option, Brand, Repository, UseCase)
+- Error framework (RFC 7807)
+- Config module + Zod validation
+- Redis module
+- Logger (Pino + redact)
+- Health controller
+- Middleware (RequestId + TenantContext)
+- Lefthook + commitlint + CI
+
+### Sprint 1 #1 — Tenant Resolution ✅
+
+### Sprint 1 #2 — Auth Guard JWT ✅
+
+### Sprint 1 #3 — RBAC Guard ✅
+
+### Sprint 1 #4 — Rate Limit ✅
+
+### Sprint 1 #5 — Dynamic Routing ✅ (partial — proxy handler belum)
+
+### Sprint 3A — Admin API ✅
+
+### Dashboard (Next.js) ✅
+
+### Security Hardening (OWASP) ✅
+
+### Belum Dikerjakan:
+
+- **Sprint 1 #5 lanjutan** — Proxy handler (undici forward)
+- **Sprint 1 #6** — API Key Auth (verifikasi di request)
+- **Sprint 2** — Idempotency, Circuit Breaker, Cache
+- **Sprint 3** — Metrics endpoint, Tracing
+- **Sprint 4** — gRPC upstream
+- **P1 Security** — JWT httpOnly cookie, MFA admin, approval workflow
+
+---
+
+## 9. Konteks untuk AI Agent
+
+### Saat menulis kode baru:
+
+1. **Baca dulu**: `AGENTS.md`, `RULES.md`, `docs/ARCHITECTURE.md`
+2. **Cek boundary**: `pnpm deps:check` sebelum commit
+3. **Ikuti pola**: lihat use case / adapter yang sudah ada
+4. **Tulis test**: setiap use case wajib punya test
+5. **Error handling**: pakai `DomainError` + kode `GW_*`
+6. **Validasi input**: selalu pakai Zod
+7. **Logging**: pakai `Logger`, redact field sensitif
+8. **Jangan**:
+   - `any`, `as unknown as`, `@ts-ignore`
+   - `console.log`
+   - Import infra di `core/`
+   - Hardcode secret / URL
+   - Query DB dari gateway
+   - Bypass guard
+
+### Saat menambah fitur:
+
+1. Buat folder `core/<nama>/domain/` + `application/`
+2. Buat Port (interface) di `domain/`
+3. Buat UseCase di `application/`
+4. Buat Adapter di `infrastructure/<nama>/`
+5. Buat Controller di `modules/<nama>/`
+6. Register di `app.module.ts`
+7. Tambah test + dokumentasi
+
+### Saat menambah error code:
+
+1. Tambah di `error-codes.ts` (enum)
+2. Tambah di `error-catalog.ts` (status + title + retryable)
+3. Buat class di `gateway-error.ts`
+4. Update dokumentasi
+
+### Saat menambah endpoint admin:
+
+1. Controller di `modules/admin/`
+2. **Wajib** `@Roles('admin')` + `@Scopes('admin:*')`
+3. `@RateLimit({ ip: { limit: 30, windowSec: 60 } })`
+4. DTO dengan Zod di `dto/`
+5. Record audit setiap mutation
+
+---
+
+## 10. Referensi
 
 - `docs/ARCHITECTURE.md` — arsitektur sistem
 - `docs/PRD.md` — product requirements
+- `docs/TECHSTACK.md` — tech stack
+- `docs/RESILIENCE.md` — race condition, deadlock, SPOF
 - `AGENTS.md` — aturan kode untuk AI
 - `RULES.md` — clean code & error handling
