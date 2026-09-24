@@ -27,8 +27,31 @@ export function loadConfig() {
       ttl: env.RATE_LIMIT_TTL,
       max: env.RATE_LIMIT_MAX,
     },
+    retry: {
+      maxRetries: env.RETRY_MAX_RETRIES,
+      baseDelayMs: env.RETRY_BASE_DELAY_MS,
+      maxDelayMs: env.RETRY_MAX_DELAY_MS,
+      jitterMs: env.RETRY_JITTER_MS,
+    },
+    bulkhead: {
+      maxConcurrent: env.BULKHEAD_MAX_CONCURRENT,
+      maxQueue: env.BULKHEAD_MAX_QUEUE,
+      queueTimeoutMs: env.BULKHEAD_QUEUE_TIMEOUT_MS,
+    },
+    circuitBreaker: {
+      failureThreshold: env.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+      successThreshold: env.CIRCUIT_BREAKER_SUCCESS_THRESHOLD,
+      resetTimeoutMs: env.CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
+    },
+    idempotency: {
+      lockTtlSec: env.IDEMPOTENCY_LOCK_TTL_SEC,
+      replayTtlSec: env.IDEMPOTENCY_REPLAY_TTL_SEC,
+    },
     tenants: {
       filePath: env.TENANTS_FILE,
+    },
+    routes: {
+      filePath: env.ROUTES_FILE,
     },
     upstream: {
       auth: env.SERVICE_AUTH_URL,
