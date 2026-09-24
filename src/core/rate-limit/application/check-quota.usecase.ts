@@ -2,11 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { RateLimitExceededError } from '@/shared/errors/index.js';
 import type { TenantId } from '@/core/tenant/domain/tenant-id.vo.js';
 import type { Principal } from '@/core/auth/domain/principal.entity.js';
-import {
-  RATE_LIMITER,
-  type RateLimiterPort,
-  type RateLimitResult,
-} from '../domain/rate-limiter.port.js';
+import { RATE_LIMITER, type RateLimiterPort } from '../domain/rate-limiter.port.js';
 import type { Quota } from '../domain/quota.vo.js';
 
 export interface RateLimitPolicy {
