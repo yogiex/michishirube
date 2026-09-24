@@ -5,7 +5,13 @@ export const metadata: Metadata = {
   title: 'Sign In',
 };
 
-export default function LoginPage() {
+interface LoginPageProps {
+  readonly searchParams: Promise<{ readonly returnTo?: string | string[] }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
   return (
     <div className="grid min-h-screen lg:grid-cols-[55%_45%]">
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-12 text-white lg:flex lg:flex-col lg:justify-between lg:p-16 kanji-watermark">
@@ -81,7 +87,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <LoginForm />
+          <LoginForm returnTo={returnTo} />
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
             © 2026 Michishirube · v0.1.0

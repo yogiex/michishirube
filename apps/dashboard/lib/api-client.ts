@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:7300';
+import { resolveApiBaseUrl } from './api/config';
+
+const API_BASE = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export class ApiError extends Error {
   constructor(
@@ -17,21 +19,11 @@ interface RequestOptions extends RequestInit {
 }
 
 class ApiClient {
-  private getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('auth_token');
-  }
-
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { skipAuth, ...init } = options;
+    const { skipAuth: _skipAuth, ...init } = options;
     const headers = new Headers(init.headers);
 
-    headers.set('Content-Type', 'application/json');
-
-    if (!skipAuth) {
-      const token = this.getToken();
-      if (token) headers.set('Authorization', `Bearer ${token}`);
-    }
+    if (init.body !== undefined) headers.set('Content-Type', 'application/json');
 
     const res = await fetch(`${API_BASE}${path}`, {
       ...init,
