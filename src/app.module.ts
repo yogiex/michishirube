@@ -14,6 +14,7 @@ import { TenantModule } from './core/tenant/tenant.module.js';
 import { RbacModule } from './core/rbac/rbac.module.js';
 import { RateLimitModule } from './core/rate-limit/rate-limit.module.js';
 import { CircuitBreakerModule } from './core/circuit-breaker/circuit-breaker.module.js';
+import { BulkheadModule } from './core/bulkhead/bulkhead.module.js';
 import { ApiKeyModule } from './core/api-key/api-key.module.js';
 import { IdempotencyModule } from './core/idempotency/idempotency.module.js';
 import { RetryModule } from './core/retry/retry.module.js';
@@ -36,6 +37,7 @@ import { ProxyModule } from './modules/proxy/proxy.module.js';
     RbacModule,
     RateLimitModule,
     CircuitBreakerModule.register({ breaker: RedisCircuitBreakerAdapter }),
+    BulkheadModule,
     IdempotencyModule,
     RetryModule,
     ApiKeyModule.register({

@@ -25,6 +25,10 @@ export const envSchema = z
     RETRY_MAX_DELAY_MS: z.coerce.number().int().min(1).max(3_600_000).default(2_000),
     RETRY_JITTER_MS: z.coerce.number().int().min(0).max(3_600_000).default(50),
 
+    BULKHEAD_MAX_CONCURRENT: z.coerce.number().int().min(1).max(10_000).default(100),
+    BULKHEAD_MAX_QUEUE: z.coerce.number().int().min(0).max(10_000).default(200),
+    BULKHEAD_QUEUE_TIMEOUT_MS: z.coerce.number().int().min(100).max(300_000).default(30_000),
+
     CIRCUIT_BREAKER_FAILURE_THRESHOLD: z.coerce.number().int().min(1).max(1_000_000).default(5),
     CIRCUIT_BREAKER_SUCCESS_THRESHOLD: z.coerce.number().int().min(1).max(1_000_000).default(2),
     CIRCUIT_BREAKER_RESET_TIMEOUT_MS: z.coerce

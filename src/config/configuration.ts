@@ -33,6 +33,11 @@ export function loadConfig() {
       maxDelayMs: env.RETRY_MAX_DELAY_MS,
       jitterMs: env.RETRY_JITTER_MS,
     },
+    bulkhead: {
+      maxConcurrent: env.BULKHEAD_MAX_CONCURRENT,
+      maxQueue: env.BULKHEAD_MAX_QUEUE,
+      queueTimeoutMs: env.BULKHEAD_QUEUE_TIMEOUT_MS,
+    },
     circuitBreaker: {
       failureThreshold: env.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
       successThreshold: env.CIRCUIT_BREAKER_SUCCESS_THRESHOLD,

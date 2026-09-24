@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ExecuteWithCircuitBreakerUseCase } from '@/core/circuit-breaker/application/execute-with-circuit-breaker.usecase.js';
+import { ExecuteWithBulkheadUseCase } from '@/core/bulkhead/application/execute-with-bulkhead.usecase.js';
 import { ResolveRouteUseCase } from '@/core/routing/application/resolve-route.usecase.js';
 import type { AppConfig } from '@/config/configuration.js';
 import type { Route } from '@/core/routing/domain/route.entity.js';
@@ -48,6 +49,7 @@ export class ProxyService {
     private readonly resolveRoute: ResolveRouteUseCase,
     @Inject(UNDICI_PROXY_CLIENT) private readonly client: UpstreamClientPort,
     private readonly executeWithBreaker: ExecuteWithCircuitBreakerUseCase,
+    private readonly executeWithBulkhead: ExecuteWithBulkheadUseCase,
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
@@ -77,11 +79,7 @@ export class ProxyService {
 
     const headers = sanitizeRequestHeaders(input.headers, overrides);
 
-    const response = await this.executeWithBreaker.execute({
-      circuitKey: this.buildCircuitKey(upstreamUrl),
-      config: this.config.getOrThrow<AppConfig['circuitBreaker']>('circuitBreaker'),
-      operation: () => this.requestWithRetry(input, route, upstreamUrl, headers),
-    });
+    const response = await this.requestWithRetry(input, route, upstreamUrl, headers);
 
     const cleanHeaders = sanitizeResponseHeaders(response.headers);
 
@@ -108,13 +106,23 @@ export class ProxyService {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const response = await this.client.request({
-          method: input.method,
-          url: upstreamUrl,
-          headers,
-          body: input.body,
-          timeoutMs: route.timeoutMs,
-          signal: input.signal,
+        const response = await this.executeWithBreaker.execute({
+          circuitKey: this.buildCircuitKey(upstreamUrl),
+          config: this.config.getOrThrow<AppConfig['circuitBreaker']>('circuitBreaker'),
+          operation: () =>
+            this.executeWithBulkhead.execute({
+              key: this.buildCircuitKey(upstreamUrl),
+              config: this.config.getOrThrow<AppConfig['bulkhead']>('bulkhead'),
+              operation: () =>
+                this.client.request({
+                  method: input.method,
+                  url: upstreamUrl,
+                  headers,
+                  body: input.body,
+                  timeoutMs: route.timeoutMs,
+                  signal: input.signal,
+                }),
+            }),
         });
 
         if (!this.isRetryableStatus(response.status)) return response;

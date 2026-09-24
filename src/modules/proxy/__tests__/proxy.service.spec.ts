@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import { ConfigService } from '@nestjs/config';
 import { ProxyService } from '../proxy.service.js';
 import { ExecuteWithCircuitBreakerUseCase } from '@/core/circuit-breaker/application/execute-with-circuit-breaker.usecase.js';
+import {
+  ExecuteWithBulkheadUseCase,
+  type BulkheadPort,
+} from '@/core/bulkhead/application/execute-with-bulkhead.usecase.js';
 import { RecordCircuitOutcomeUseCase } from '@/core/circuit-breaker/application/record-circuit-outcome.usecase.js';
 import { createCircuitBreakerConfig } from '@/core/circuit-breaker/domain/circuit-breaker-config.vo.js';
 import type { CircuitBreakerPort } from '@/core/circuit-breaker/domain/circuit-breaker.port.js';
@@ -30,6 +34,16 @@ function createBreaker(
     ...overrides,
   };
   return new ExecuteWithCircuitBreakerUseCase(port, new RecordCircuitOutcomeUseCase(port));
+}
+
+function createBulkhead(): ExecuteWithBulkheadUseCase {
+  const port: BulkheadPort = {
+    acquire: vi.fn().mockResolvedValue({
+      queued: false,
+      release: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    }),
+  };
+  return new ExecuteWithBulkheadUseCase(port);
 }
 
 function makeRoute(over: Partial<Route> = {}): Route {
@@ -86,8 +100,16 @@ describe('ProxyService', () => {
     breaker = createBreaker();
     const resolveRoute: { execute: Execute } = { execute };
     const config = new ConfigService<AppConfig, true>();
-    vi.spyOn(config, 'getOrThrow').mockReturnValue(circuitConfig);
-    service = new ProxyService(resolveRoute as ResolveRouteUseCase, { request }, breaker, config);
+    vi.spyOn(config, 'getOrThrow').mockImplementation((key: string) =>
+      key === 'bulkhead' ? { maxConcurrent: 1, maxQueue: 2, queueTimeoutMs: 100 } : circuitConfig,
+    );
+    service = new ProxyService(
+      resolveRoute as ResolveRouteUseCase,
+      { request },
+      breaker,
+      createBulkhead(),
+      config,
+    );
   });
 
   afterEach(() => {
@@ -264,9 +286,17 @@ describe('ProxyService', () => {
       }),
     });
     const config = new ConfigService<AppConfig, true>();
-    vi.spyOn(config, 'getOrThrow').mockReturnValue(circuitConfig);
+    vi.spyOn(config, 'getOrThrow').mockImplementation((key: string) =>
+      key === 'bulkhead' ? { maxConcurrent: 1, maxQueue: 2, queueTimeoutMs: 100 } : circuitConfig,
+    );
     const resolveRoute: { execute: Execute } = { execute };
-    service = new ProxyService(resolveRoute as ResolveRouteUseCase, { request }, breaker, config);
+    service = new ProxyService(
+      resolveRoute as ResolveRouteUseCase,
+      { request },
+      breaker,
+      createBulkhead(),
+      config,
+    );
 
     await expect(service.handle(baseInput())).rejects.toBeInstanceOf(CircuitOpenError);
     expect(request).not.toHaveBeenCalled();
@@ -279,9 +309,17 @@ describe('ProxyService', () => {
     });
     breaker = createBreaker({ acquire });
     const config = new ConfigService<AppConfig, true>();
-    vi.spyOn(config, 'getOrThrow').mockReturnValue(circuitConfig);
+    vi.spyOn(config, 'getOrThrow').mockImplementation((key: string) =>
+      key === 'bulkhead' ? { maxConcurrent: 1, maxQueue: 2, queueTimeoutMs: 100 } : circuitConfig,
+    );
     const resolveRoute: { execute: Execute } = { execute };
-    service = new ProxyService(resolveRoute as ResolveRouteUseCase, { request }, breaker, config);
+    service = new ProxyService(
+      resolveRoute as ResolveRouteUseCase,
+      { request },
+      breaker,
+      createBulkhead(),
+      config,
+    );
     request.mockResolvedValue({ status: 200, headers: {}, body: Buffer.from('') });
 
     await service.handle(baseInput({ query: '?page=1' }));
