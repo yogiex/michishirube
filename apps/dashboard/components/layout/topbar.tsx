@@ -17,40 +17,58 @@ import { useAuth } from '@/lib/auth';
 
 interface TopbarProps {
   onMenuClick: () => void;
+  navigationOpen?: boolean;
   title?: string;
 }
 
-export function Topbar({ onMenuClick, title }: TopbarProps) {
+export function Topbar({ onMenuClick, navigationOpen = false, title }: TopbarProps) {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  function handleLogout() {
-    logout();
-    router.push('/login');
+  async function handleLogout() {
+    await logout();
+    router.replace('/login');
+    router.refresh();
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-background px-4 lg:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onMenuClick} className="lg:hidden">
-          <Menu className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMenuClick}
+          className="lg:hidden"
+          aria-label="Open navigation"
+          aria-controls="dashboard-navigation"
+          aria-expanded={navigationOpen}
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
         </Button>
         {title && <h1 className="text-lg font-semibold">{title}</h1>}
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
+        <Button variant="ghost" size="icon" aria-label="Notifications">
+          <Bell className="h-5 w-5" aria-hidden="true" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}
+          title={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}
         >
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <Sun
+            className="h-5 w-5 rotate-0 scale-100 transition-all [[data-theme=dark]_&]:-rotate-90 [[data-theme=dark]_&]:scale-0"
+            aria-hidden="true"
+          />
+          <Moon
+            className="absolute h-5 w-5 rotate-90 scale-0 transition-all [[data-theme=dark]_&]:rotate-0 [[data-theme=dark]_&]:scale-100"
+            aria-hidden="true"
+          />
         </Button>
 
         <DropdownMenu>
@@ -69,10 +87,10 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="text-sm font-medium">{user?.email ?? 'admin@michishirube.dev'}</span>
-                <span className="text-xs text-muted-foreground">
-                  {user?.roles?.[0] ?? 'admin'}
+                <span className="text-sm font-medium">
+                  {user?.email ?? 'admin@michishirube.dev'}
                 </span>
+                <span className="text-xs text-muted-foreground">{user?.roles?.[0] ?? 'admin'}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

@@ -17,17 +17,23 @@ const pageTitles: Record<string, string> = {
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const status = useAuth((state) => state.status);
+  const hasRole = useAuth((state) => state.hasRole);
+  const hydrate = useAuth((state) => state.hydrate);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+    void hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (status === 'anonymous') router.replace('/login');
+    if (status === 'authenticated' && !hasRole('admin')) void useAuth.getState().logout();
+  }, [hasRole, router, status]);
+
+  if (status !== 'authenticated' || !hasRole('admin')) return null;
 
   const title = pageTitles[pathname] ?? 'Michishirube';
-
   return <Shell title={title}>{children}</Shell>;
 }

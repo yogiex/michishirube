@@ -595,19 +595,79 @@ Admin API (:7300/admin/*)
 
 ---
 
-## 7. Statistik (Setelah Sprint 3A)
+## 7. Statistik (Setelah Sprint 3A + F2 + API Contract v2)
 
-| Metrik                                |                                                                           Jumlah |
-| ------------------------------------- | -------------------------------------------------------------------------------: |
-| Source file gateway (`.ts`)           |                                                                              ~90 |
-| Source file dashboard (`.tsx`, `.ts`) |                                                                              ~30 |
-| Test file gateway                     |                                                                              ~30 |
-| Total test                            |                                                                             ~200 |
-| Core domain context                   | 8 (`auth`, `rbac`, `tenant`, `rate-limit`, `routing`, `api-key`, `audit`, +stub) |
-| Infrastructure adapter                |                          6 (redis, jwt, rbac, rate-limit, config-repo, security) |
-| Error codes                           |                                                                              114 |
-| Endpoint admin                        |                                                                               13 |
-| Halaman dashboard                     |                                                                                9 |
+### 7.1 Gateway (Backend)
+
+| Metrik                      |                                                                            Jumlah |
+| --------------------------- | --------------------------------------------------------------------------------: |
+| Source file gateway (`.ts`) |                                                                               ~90 |
+| Test file gateway           |                                                                               ~30 |
+| Total test                  |                                                                              ~200 |
+| Core domain context         | 8 (`auth`, `rbac`, `tenant`, `rate-limit`, `routing`, `api-key`, `audit`, + stub) |
+| Infrastructure adapter      |                           6 (redis, jwt, rbac, rate-limit, config-repo, security) |
+| Error codes                 |                                                                               114 |
+| Guards                      |                                          4 (auth, rbac, ip-allowlist, rate-limit) |
+| Middleware                  |                                                    2 (request-id, tenant-context) |
+
+### 7.2 Admin API
+
+| Group                | Endpoint | Status       |
+| -------------------- | -------: | ------------ |
+| **Auth**             |        3 | ⏳ Sprint 3B |
+| **Routes**           |        6 | ✅ Sprint 3A |
+| **Tenants**          |        4 | ✅ Sprint 3A |
+| **API Keys**         |        4 | ✅ Sprint 3A |
+| **Audit**            |        1 | ✅ Sprint 3A |
+| **Circuit Breakers** |        3 | ⏳ Sprint 2  |
+| **Bulkheads**        |        2 | ⏳ Sprint 2  |
+| **Overview**         |        1 | ⏳ Sprint 3B |
+| **Total**            |   **24** | —            |
+
+**Referensi kontrak:** `docs/FRONTEND-API-CONTRACT.md` v2.0.0
+
+### 7.3 Dashboard (Frontend)
+
+| Metrik                                |                                             Jumlah |
+| ------------------------------------- | -------------------------------------------------: |
+| Source file dashboard (`.tsx`, `.ts`) |                                                ~30 |
+| Halaman                               |                                                  9 |
+| Design system tokens                  |                   15 (color, spacing, radius, dll) |
+| Komponen UI primitive                 |        5 (button, badge, skeleton, input, tooltip) |
+| Komponen layout                       |  5 (shell, sidebar, topbar, breadcrumb, user-menu) |
+| Komponen shared                       | 8 (error-state, error-toast, request-id-copy, dll) |
+| Komponen feature                      |                  ~12 (kpi-strip, route-table, dll) |
+| Banner kind                           |      5 (redis, upstream, jwks, config, rate-limit) |
+| Query hooks                           |                  ~6 (use-routes, use-tenants, dll) |
+
+### 7.4 Dokumentasi
+
+| Dokumen                                     | Status           |
+| ------------------------------------------- | ---------------- |
+| `docs/PRD.md`                               | ✅               |
+| `docs/ARCHITECTURE.md`                      | ✅               |
+| `docs/STRUCTURE.md`                         | ✅ (dokumen ini) |
+| `docs/TECHSTACK.md`                         | ✅               |
+| `docs/RESILIENCE.md`                        | ✅               |
+| `docs/SPRINT.md`                            | ✅               |
+| `docs/FRONTEND-API-CONTRACT.md`             | ✅ v2.0.0        |
+| `AGENTS.md`                                 | ✅               |
+| `RULES.md`                                  | ✅               |
+| `apps/dashboard/AGENTS.md`                  | ✅               |
+| `apps/dashboard/FRONTEND-DESIGN.md`         | ✅               |
+| `apps/dashboard/FRONTEND-PATTERNS.md`       | ✅               |
+| `apps/dashboard/FRONTEND-ERROR-HANDLING.md` | ✅               |
+| `docs/FRONTEND-DATA-FLOW.md`                | ⏳               |
+| `docs/FRONTEND-SECURITY.md`                 | ⏳               |
+
+### 7.5 Perubahan Statistik
+
+| Sebelum                     | Sesudah                  | Alasan                               |
+| --------------------------- | ------------------------ | ------------------------------------ |
+| Endpoint admin: 13          | 24                       | Sesuai `FRONTEND-API-CONTRACT.md` v2 |
+| Satu tabel besar            | Dipecah 4 kategori       | Lebih mudah dibaca                   |
+| Tidak ada status            | Ada status per group     | Traceability                         |
+| Tidak ada referensi kontrak | Ada link ke API contract | Single source of truth               |
 
 ---
 

@@ -10,25 +10,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { safeReturnTo } from '@/lib/auth-navigation';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 
-const loginSchema = z.object({
+export const loginSchema = z.object({
   email: z
     .string()
+    .trim()
+    .toLowerCase()
     .min(1, 'Email wajib diisi')
     .email('Email tidak valid')
     .max(254, 'Email terlalu panjang'),
-  password: z
-    .string()
-    .min(8, 'Password minimal 8 karakter')
-    .max(128, 'Password terlalu panjang'),
+  password: z.string().min(8, 'Password minimal 8 karakter').max(128, 'Password terlalu panjang'),
   remember: z.boolean(),
+});
+
+const sessionResponseSchema = z.object({
+  user: z.object({
+    userId: z.string().min(1).max(128),
+    tenantId: z.string().min(1).max(128),
+    roles: z.array(z.string().min(1).max(64)).min(1).max(20),
+    email: z.string().max(254),
+  }),
 });
 
 type LoginInput = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+interface LoginFormProps {
+  readonly returnTo?: string;
+}
+
+export function LoginForm({ returnTo }: LoginFormProps) {
   const router = useRouter();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -41,29 +54,39 @@ export function LoginForm() {
   });
 
   async function onSubmit(data: LoginInput) {
+    const destination = safeReturnTo(returnTo);
+
     setIsLoading(true);
     setServerError(null);
 
     try {
-      await new Promise((r) => setTimeout(r, 800));
-
-      if (data.email !== 'admin@michishirube.dev' || data.password !== 'admin12345') {
-        throw new Error('Email atau password salah');
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const body: unknown = await response.json();
+      if (!response.ok) {
+        const message =
+          typeof body === 'object' &&
+          body !== null &&
+          'error' in body &&
+          typeof body.error === 'string'
+            ? body.error
+            : 'Login gagal';
+        throw new Error(message);
+      }
+      const session = sessionResponseSchema.safeParse(body);
+      if (!session.success || !session.data.user.roles.includes('admin')) {
+        throw new Error('Respons sesi tidak valid');
       }
 
-      const mockToken = 'demo.jwt.token';
-      login(
-        {
-          userId: 'u_001',
-          tenantId: 'acme',
-          roles: ['admin'],
-          email: data.email,
-        },
-        mockToken,
-      );
-
+      login(session.data.user);
       toast.success('Welcome back, admin!');
-      router.push('/');
+      router.replace(destination);
+      router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login gagal';
       setServerError(message);
@@ -79,9 +102,7 @@ export function LoginForm() {
     <div className="animate-in-up">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back 👋</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Sign in to your admin account
-        </p>
+        <p className="mt-1.5 text-sm text-muted-foreground">Sign in to your admin account</p>
       </div>
 
       {serverError && (
@@ -103,19 +124,13 @@ export function LoginForm() {
             disabled={isLoading}
             {...form.register('email')}
           />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
-            <a
-              href="#"
-              className="text-xs text-primary hover:underline"
-              tabIndex={-1}
-            >
+            <a href="#" className="text-xs text-primary hover:underline" tabIndex={-1}>
               Forgot password?
             </a>
           </div>
@@ -137,16 +152,10 @@ export function LoginForm() {
               aria-label={showPassword ? 'Hide password' : 'Show password'}
               tabIndex={-1}
             >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
 
         <div className="flex items-center gap-2">
@@ -194,10 +203,6 @@ export function LoginForm() {
         <span className="font-medium text-foreground">Contact administrator</span>
       </p>
 
-      <div className="mt-6 rounded-lg border border-dashed bg-muted/30 p-3 text-center text-xs text-muted-foreground">
-        <p className="font-medium">Demo credentials</p>
-        <p className="mt-1 font-mono">admin@michishirube.dev / admin12345</p>
-      </div>
     </div>
   );
 }

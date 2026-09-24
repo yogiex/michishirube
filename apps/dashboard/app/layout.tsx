@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
+import { WebVitalsReporter } from '@/components/web-vitals-reporter';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" suppressHydrationWarning>
       <body className={`${inter.variable} ${mono.variable} antialiased`}>
         <Providers>
+          <WebVitalsReporter />
           {children}
           <Toaster position="top-right" richColors />
         </Providers>
