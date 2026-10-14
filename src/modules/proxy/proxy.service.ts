@@ -54,9 +54,11 @@ export class ProxyService {
   ) {}
 
   async handle(input: ProxyInput): Promise<ProxyOutput> {
+    const ctx = RequestContextHolder.get();
     const { route, wildcard } = await this.resolveRoute.execute({
       path: input.path,
       method: input.method,
+      tenantId: ctx?.tenantId,
     });
 
     const upstreamUrl = this.buildUpstreamUrl(route, input, wildcard);
@@ -70,7 +72,6 @@ export class ProxyService {
       });
     }
 
-    const ctx = RequestContextHolder.get();
     const overrides: Record<string, string> = {
       'x-request-id': ctx?.requestId ?? 'unknown',
     };

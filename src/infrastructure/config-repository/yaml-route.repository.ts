@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { InternalConfigError } from '@/shared/errors/index.js';
 import type { RouteRepositoryPort } from '@/core/routing/domain/route.repository.port.js';
 import { RouteMethodSchema, type Route } from '@/core/routing/domain/route.entity.js';
+import { matchPath } from '@/core/routing/domain/path-matcher.js';
 
 export const DEFAULT_ROUTES_FILE = './config/routes.yaml';
 
@@ -23,6 +24,7 @@ const RouteSchema = z.object({
     .url()
     .refine((u) => u.startsWith('http://') || u.startsWith('https://'), 'harus http/https'),
   enabled: z.boolean(),
+  disabledReason: z.string().max(256).optional(),
   requireAuth: z.boolean(),
   requireIdempotency: z.boolean(),
   roles: z.array(z.string().max(64)).max(32),
@@ -33,6 +35,10 @@ const RouteSchema = z.object({
     })
     .optional(),
   timeoutMs: z.number().int().min(100).max(60_000),
+  tenantId: z.string().max(128).optional(),
+  tenantIds: z.array(z.string().max(128)).max(100).optional(),
+  tenants: z.array(z.string().max(128)).max(100).optional(),
+  allowedTenants: z.array(z.string().max(128)).max(100).optional(),
 });
 
 const RoutesFileSchema = z.object({
@@ -52,8 +58,33 @@ export class YamlRouteRepository implements RouteRepositoryPort, OnModuleInit {
     await this.reload();
   }
 
-  async findAll(): Promise<readonly Route[]> {
-    return this.routes;
+  async findAll(tenantId?: string): Promise<readonly Route[]> {
+    const filtered =
+      tenantId === undefined
+        ? this.routes
+        : this.routes.filter((route) => this.allowsTenant(route, tenantId));
+    return filtered;
+  }
+
+  async findByPath(path: string, tenantId?: string): Promise<readonly Route[]> {
+    const source =
+      tenantId === undefined
+        ? this.routes
+        : this.routes.filter((route) => this.allowsTenant(route, tenantId));
+    return source.filter((route) => matchPath(route.path, path).matched);
+  }
+
+  async findByTenant(tenantId: string): Promise<readonly Route[]> {
+    return this.findAll(tenantId);
+  }
+
+  private allowsTenant(route: Route, tenantId: string): boolean {
+    const allowed =
+      route.tenantId !== undefined
+        ? [route.tenantId]
+        : (route.tenantIds ?? route.tenants ?? route.allowedTenants ?? []);
+    if (allowed.length === 0) return true;
+    return allowed.includes(tenantId);
   }
 
   async reload(): Promise<void> {
@@ -122,12 +153,17 @@ export class YamlRouteRepository implements RouteRepositoryPort, OnModuleInit {
       method: raw.method,
       upstream: raw.upstream,
       enabled: raw.enabled,
+      disabledReason: raw.disabledReason,
       requireAuth: raw.requireAuth,
       requireIdempotency: raw.requireIdempotency,
       roles: raw.roles,
       rateLimit: raw.rateLimit,
       timeoutMs: raw.timeoutMs,
       createdAt: new Date().toISOString(),
+      tenantId: raw.tenantId,
+      tenantIds: raw.tenantIds,
+      tenants: raw.tenants,
+      allowedTenants: raw.allowedTenants,
     };
   }
 }

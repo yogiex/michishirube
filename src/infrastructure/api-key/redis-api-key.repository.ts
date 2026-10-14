@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 import { z } from 'zod';
 import type { ApiKeyHashService } from '@/core/api-key/domain/api-key-hash.service.js';
+import { API_KEY_HASH_SERVICE } from '@/core/api-key/domain/api-key-hash.service.token.js';
 import { API_KEY_STATUSES, type ApiKey } from '@/core/api-key/domain/api-key.entity.js';
 import type { ApiKeyRepositoryPort } from '@/core/api-key/domain/api-key.repository.port.js';
 import { REDIS_CLIENT } from '@/infrastructure/redis/redis.constants.js';
@@ -58,7 +59,7 @@ export interface RedisApiKeyClient {
 export class RedisApiKeyRepository implements ApiKeyRepositoryPort {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis | RedisApiKeyClient,
-    private readonly hasher: ApiKeyHashService,
+    @Inject(API_KEY_HASH_SERVICE) private readonly hasher: ApiKeyHashService,
   ) {}
 
   async findAll(tenantId: string): Promise<readonly ApiKey[]> {

@@ -7,5 +7,6 @@ export const TENANT_REPOSITORY = Symbol('TENANT_REPOSITORY');
 export interface TenantRepositoryPort {
   findById(id: TenantId): Promise<Option<Tenant>>;
   findBySlug(slug: string): Promise<Option<Tenant>>;
+  listAll(): Promise<readonly Tenant[]>;
   reload(): Promise<void>;
 }

@@ -1,550 +1,110 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────
-# checkpoint.sh — Status checkpoint project Michishirube
-# Fokus: Sprint progress + kesiapan sprint berikutnya
-# Output: checkpoint.txt
-# ─────────────────────────────────────────────────────
-
 set -uo pipefail
 
 REPORT="checkpoint.txt"
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 PROJECT_NAME=$(basename "$PWD")
-
-# ─── Warna ───────────────────────────────────────────
-GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
-
-# ─── Report init ─────────────────────────────────────
+GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 : > "$REPORT"
 
-# ─── Output helpers — SEMUA masuk report ─────────────
-log()    { echo -e "$1" | tee -a "$REPORT"; }
-ok()     { echo -e "${GREEN}✅${NC} $1" | tee -a "$REPORT"; }
-warn()   { echo -e "${YELLOW}⚠️ ${NC} $1" | tee -a "$REPORT"; }
-fail()   { echo -e "${RED}❌${NC} $1" | tee -a "$REPORT"; }
-info()   { echo -e "${BLUE}ℹ️ ${NC} $1" | tee -a "$REPORT"; }
+log() { printf '%b\n' "$1" | tee -a "$REPORT"; }
+ok() { printf '%b\n' "${GREEN}✅${NC} $1" | tee -a "$REPORT"; }
+warn() { printf '%b\n' "${YELLOW}⚠️ ${NC} $1" | tee -a "$REPORT"; }
+fail() { printf '%b\n' "${RED}❌${NC} $1" | tee -a "$REPORT"; }
+info() { printf '%b\n' "${BLUE}ℹ️ ${NC} $1" | tee -a "$REPORT"; }
+heading() { log "${BOLD}${CYAN}$1${NC}"; }
+log_section() { log ""; log "═══════════════════════════════════════════════════"; log "  $1"; log "═══════════════════════════════════════════════════"; }
+get_version() { local output; output=$(eval "$1" 2>/dev/null | head -1 || true); [ -n "$output" ] && printf '%s\n' "$output" || printf 'NOT FOUND\n'; }
 
-log_section() {
-  echo "" | tee -a "$REPORT"
-  echo "═══════════════════════════════════════════════════" | tee -a "$REPORT"
-  echo "  $1" | tee -a "$REPORT"
-  echo "═══════════════════════════════════════════════════" | tee -a "$REPORT"
-}
-
-# ─── Helper: ambil versi tool, strip ANSI, fallback ──
-get_version() {
-  local cmd="$1"
-  local output
-  output=$(eval "$cmd" 2>/dev/null | head -1 || true)
-  if [ -z "$output" ]; then
-    echo "NOT FOUND"
-  else
-    echo "$output" | sed 's/\x1b\[[0-9;]*m//g'
-  fi
-}
-
-# ─────────────────────────────────────────────────────
 log_section "CHECKPOINT — $PROJECT_NAME"
 log "Timestamp : $TIMESTAMP"
 log "Directory : $PWD"
 log "User      : $(whoami)"
+log "Host      : $(hostname)"
 log ""
 
-# ─────────────────────────────────────────────────────
 log_section "1. ENVIRONMENT"
-# ─────────────────────────────────────────────────────
-NODE_VER=$(get_version "node -v")
-PNPM_VER=$(get_version "pnpm -v")
-NPM_VER=$(get_version "npm -v")
-DOCKER_VER=$(get_version "docker --version")
-COMPOSE_VER=$(get_version "docker compose version")
-COMPOSE_VER2=$(get_version "docker-compose --version")
-REDIS_CLI_VER=$(get_version "redis-cli --version")
-GIT_VER=$(get_version "git --version")
+NODE_VER=$(get_version "node -v"); PNPM_VER=$(get_version "pnpm -v"); NPM_VER=$(get_version "npm -v"); DOCKER_VER=$(get_version "docker --version"); COMPOSE_VER=$(get_version "docker compose version"); COMPOSE_VER2=$(get_version "docker-compose --version"); GIT_VER=$(get_version "git --version")
+[ "$COMPOSE_VER" = "NOT FOUND" ] && COMPOSE_VER="$COMPOSE_VER2"
+heading "[Runtime]"; log "  Node    : $NODE_VER"; log "  pnpm    : $PNPM_VER"; log "  npm     : $NPM_VER"; log "  Docker  : $DOCKER_VER"; log "  Compose : $COMPOSE_VER"; log "  Git     : $GIT_VER"; log ""
 
-# Fallback compose
-if [ "$COMPOSE_VER" = "NOT FOUND" ] && [ "$COMPOSE_VER2" != "NOT FOUND" ]; then
-  COMPOSE_VER="$COMPOSE_VER2"
-fi
-
-log "[Runtime]"
-log "  Node        : $NODE_VER"
-log "  pnpm        : $PNPM_VER"
-log "  npm         : $NPM_VER"
-log "  Docker      : $DOCKER_VER"
-log "  Compose     : $COMPOSE_VER"
-log "  Redis CLI   : $REDIS_CLI_VER"
-log "  Git         : $GIT_VER"
-log ""
-
-log "[Redis Connectivity]"
-if [ "$REDIS_CLI_VER" != "NOT FOUND" ]; then
-  REDIS_HOST="${REDIS_HOST:-localhost}"
-  REDIS_PORT="${REDIS_PORT:-7380}"
-  if redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping 2>/dev/null | grep -q PONG; then
-    ok "Redis reachable di $REDIS_HOST:$REDIS_PORT"
-    KEY_COUNT=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" dbsize 2>/dev/null || echo "?")
-    log "    DB size     : $KEY_COUNT keys"
-    GW_KEYS=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" --scan --pattern 'gw:*' 2>/dev/null | wc -l | tr -d ' ')
-    log "    gw:* keys   : $GW_KEYS keys"
-  else
-    warn "Redis tidak reachable di $REDIS_HOST:$REDIS_PORT"
-  fi
-else
-  warn "redis-cli tidak terinstall — skip Redis check"
-fi
-log ""
-
-# ─────────────────────────────────────────────────────
 log_section "2. GIT STATE"
-# ─────────────────────────────────────────────────────
 if [ -d .git ]; then
-  log "  Branch      : $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
-  log "  Commit      : $(git rev-parse --short HEAD 2>/dev/null)"
-  log "  Message     : $(git log -1 --pretty=%s 2>/dev/null)"
-  DIRTY=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-  log "  Uncommitted : $DIRTY file(s)"
-  log ""
-  log "[Last 5 Commits]"
-  git log --oneline -5 2>/dev/null | while read -r line; do
-    log "  $line"
-  done
-else
-  warn "Bukan git repo"
-fi
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); COMMIT=$(git rev-parse --short HEAD 2>/dev/null); MSG=$(git log -1 --pretty=%s 2>/dev/null); DIRTY=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+  log "  Branch      : $BRANCH"; log "  Commit      : $COMMIT"; log "  Message     : $MSG"; log "  Uncommitted : $DIRTY file(s)"; log ""; heading "[Last 5 Commits]"; git log --oneline -5 2>/dev/null | while IFS= read -r line; do log "  $line"; done
+else warn "Bukan git repo"; fi
 log ""
 
-# ─────────────────────────────────────────────────────
 log_section "3. DOKUMENTASI WAJIB"
-# ─────────────────────────────────────────────────────
-for file in \
-  docs/PRD.md docs/ARCHITECTURE.md docs/STRUCTURE.md \
-  docs/TECHSTACK.md docs/RESILIENCE.md \
-  AGENTS.md RULES.md README.md CONTRIBUTING.md LICENSE; do
-  if [ -f "$file" ]; then
-    ok "$file"
-  else
-    fail "$file MISSING"
-  fi
-done
-log ""
-log "[ADR]"
-if [ -d docs/ADR ]; then
-  ADR_COUNT=$(find docs/ADR -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$ADR_COUNT" -eq 0 ]; then
-    warn "docs/ADR/ kosong"
-  else
-    find docs/ADR -maxdepth 1 -name '*.md' 2>/dev/null | sort | while read -r f; do
-      log "  - $(basename "$f")"
-    done
-  fi
-else
-  warn "docs/ADR/ tidak ada"
-fi
+for file in docs/PRD.md docs/ARCHITECTURE.md docs/STRUCTURE.md docs/TECHSTACK.md docs/RESILIENCE.md docs/SPRINT.md AGENTS.md RULES.md README.md CONTRIBUTING.md LICENSE; do [ -f "$file" ] && ok "$file" || fail "$file MISSING"; done
+log ""; heading "[ADR]"
+if [ -d docs/ADR ]; then ADR_COUNT=$(find docs/ADR -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' '); [ "$ADR_COUNT" -eq 0 ] && warn "docs/ADR/ kosong" || { info "$ADR_COUNT ADR files:"; find docs/ADR -maxdepth 1 -name '*.md' 2>/dev/null | sort | while IFS= read -r f; do log "  • $(basename "$f")"; done; }; else warn "docs/ADR/ tidak ada"; fi
 log ""
 
-# ─────────────────────────────────────────────────────
 log_section "4. STRUKTUR FOLDER"
-# ─────────────────────────────────────────────────────
-log "[Top-Level]"
-for dir in src apps docs test scripts config deploy; do
-  if [ -d "$dir" ]; then
-    ok "$dir/"
-  else
-    warn "$dir/ tidak ada"
-  fi
-done
-log ""
-log "[src/ Hexagonal]"
-for dir in \
-  src/config src/core src/infrastructure src/modules src/shared \
-  src/guards src/middleware src/interceptors; do
-  if [ -d "$dir" ]; then
-    ok "$dir/"
-  else
-    fail "$dir/ MISSING"
-  fi
-done
+heading "[Top-Level]"; for dir in src apps docs test scripts config deploy; do [ -d "$dir" ] && ok "$dir/" || warn "$dir/ tidak ada"; done
+log ""; heading "[src/ Hexagonal]"; for dir in src/config src/core src/infrastructure src/modules src/shared src/guards src/middleware src/interceptors; do [ -d "$dir" ] && ok "$dir/" || fail "$dir/ MISSING"; done
 log ""
 
-# ─────────────────────────────────────────────────────
-log_section "5. SPRINT PROGRESS — CORE MODULES"
-# ─────────────────────────────────────────────────────
-check_core_module() {
-  local name="$1"
-  local path="src/core/$name"
-
-  if [ ! -d "$path" ]; then
-    echo "MISSING|$name|0|0|0"
-    return
-  fi
-
-  local d a t m
-  d=$(find "$path/domain" -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-  a=$(find "$path/application" -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-  t=$(find "$path" -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-  m=$(find "$path" -maxdepth 1 -name '*.module.ts' 2>/dev/null | wc -l | tr -d ' ')
-
-  if [ "$d" -eq 0 ] && [ "$a" -eq 0 ] && [ "$m" -eq 0 ]; then
-    echo "STUB|$name|$d|$a|$t"
-  elif [ "$d" -gt 0 ] && [ "$a" -gt 0 ] && [ "$m" -gt 0 ]; then
-    echo "DONE|$name|$d|$a|$t"
-  else
-    echo "PARTIAL|$name|$d|$a|$t"
-  fi
+log_section "5. CORE MODULES — Detail"
+inspect_module() {
+  local name="$1" path="src/core/$1" d a t m loc
+  if [ ! -d "$path" ]; then printf 'MISSING|%s|0|0|0|0|0\n' "$name"; return; fi
+  d=$(find "$path/domain" -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' '); a=$(find "$path/application" -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' '); t=$(find "$path" -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' '); m=$(find "$path" -maxdepth 1 -name '*.module.ts' 2>/dev/null | wc -l | tr -d ' '); loc=$(find "$path" -name '*.ts' -not -name '*.spec.ts' -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$d" -eq 0 ] && [ "$a" -eq 0 ] && [ "$m" -eq 0 ]; then printf 'STUB|%s|%s|%s|%s|%s|%s\n' "$name" "$d" "$a" "$t" "$m" "$loc"; elif [ "$d" -gt 0 ] && [ "$a" -gt 0 ] && [ "$m" -gt 0 ]; then printf 'DONE|%s|%s|%s|%s|%s|%s\n' "$name" "$d" "$a" "$t" "$m" "$loc"; else printf 'PARTIAL|%s|%s|%s|%s|%s|%s\n' "$name" "$d" "$a" "$t" "$m" "$loc"; fi
 }
-
-print_module_status() {
-  local result="$1"
-  local status name d a t
-  status=$(echo "$result" | cut -d'|' -f1)
-  name=$(echo "$result" | cut -d'|' -f2)
-  d=$(echo "$result" | cut -d'|' -f3)
-  a=$(echo "$result" | cut -d'|' -f4)
-  t=$(echo "$result" | cut -d'|' -f5)
-
-  local icon color
-  case "$status" in
-    DONE)    icon="✅"; color="$GREEN" ;;
-    PARTIAL) icon="⚠️ "; color="$YELLOW" ;;
-    STUB)    icon="🟡"; color="$YELLOW" ;;
-    MISSING) icon="❌"; color="$RED" ;;
-    *)       icon="?";  color="$NC" ;;
-  esac
-
-  echo -e "${color}${icon} ${name} — domain:${d} app:${a} test:${t}${NC}" | tee -a "$REPORT"
-}
-
-log "Format: ICON | module | domain | app | tests"
-log ""
-log "[Sprint 1 — Core Gateway]"
-for mod in tenant auth rbac rate-limit routing api-key audit; do
-  print_module_status "$(check_core_module "$mod")"
-done
-log ""
-log "[Sprint 2 — Reliability]"
-for mod in idempotency circuit-breaker cache; do
-  print_module_status "$(check_core_module "$mod")"
-done
+print_module() { IFS='|' read -r status name d a t m loc <<< "$1"; case "$status" in DONE) icon="✅"; color="$GREEN";; PARTIAL|STUB) icon="⚠️"; color="$YELLOW";; MISSING) icon="❌"; color="$RED";; *) icon="?"; color="$NC";; esac; printf "${color}${icon} %-15s domain:%-2s app:%-2s mod:%-2s test:%-2s loc:%-4s${NC}\n" "$name" "$d" "$a" "$m" "$t" "$loc" | tee -a "$REPORT"; }
+heading "[Sprint 1 — Core Gateway]"; for mod in tenant auth rbac rate-limit routing api-key audit; do print_module "$(inspect_module "$mod")"; done
+log ""; heading "[Sprint 2 — Reliability]"; for mod in idempotency circuit-breaker retry cache bulkhead; do print_module "$(inspect_module "$mod")"; done
 log ""
 
-# ─────────────────────────────────────────────────────
 log_section "6. INFRASTRUCTURE ADAPTER"
-# ─────────────────────────────────────────────────────
-for dir in redis jwt rbac rate-limit config-repository security observability http grpc; do
-  if [ -d "src/infrastructure/$dir" ]; then
-    FILE_COUNT=$(find "src/infrastructure/$dir" -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-    if [ "$FILE_COUNT" -gt 0 ]; then
-      ok "infrastructure/$dir/ ($FILE_COUNT file)"
-    else
-      warn "infrastructure/$dir/ (stub, 0 file)"
-    fi
-  else
-    warn "infrastructure/$dir/ tidak ada"
-  fi
-done
+for dir in redis jwt rbac rate-limit config-repository security observability http grpc idempotency circuit-breaker retry cache; do path="src/infrastructure/$dir"; if [ -d "$path" ]; then COUNT=$(find "$path" -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' '); [ "$COUNT" -gt 0 ] && ok "infrastructure/$dir/ ($COUNT file)" || warn "infrastructure/$dir/ (stub)"; else warn "infrastructure/$dir/ tidak ada"; fi; done
 log ""
 
-# ─────────────────────────────────────────────────────
-log_section "7. GUARDS, MIDDLEWARE, INTERCEPTORS"
-# ─────────────────────────────────────────────────────
-log "[Guards]"
-GUARD_COUNT=0
-if [ -d src/guards ]; then
-  GUARD_COUNT=$(find src/guards -maxdepth 1 -name '*.guard.ts' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$GUARD_COUNT" -gt 0 ]; then
-    find src/guards -maxdepth 1 -name '*.guard.ts' 2>/dev/null | sort | while read -r f; do
-      log "  ✅ $(basename "$f")"
-    done
-  fi
-fi
-log "  Total: $GUARD_COUNT guard"
-log ""
+log_section "7. GUARDS / MIDDLEWARE / INTERCEPTORS"
+heading "[Guards]"; GUARD_COUNT=0; if [ -d src/guards ]; then find src/guards -maxdepth 1 -name '*.guard.ts' 2>/dev/null | sort | while IFS= read -r f; do log "  ✅ $(basename "$f")"; done; GUARD_COUNT=$(find src/guards -maxdepth 1 -name '*.guard.ts' 2>/dev/null | wc -l | tr -d ' '); fi; log "  Total: $GUARD_COUNT guard"; log ""
+heading "[Guard Order in app.module.ts]"; if grep -q "APP_GUARD" src/app.module.ts 2>/dev/null; then grep "APP_GUARD" src/app.module.ts | nl | while IFS=$'\t' read -r num line; do GUARD=$(printf '%s\n' "$line" | grep -oE 'useClass: [A-Za-z]+' | cut -d' ' -f2); log "  $num. $GUARD"; done; else warn "Tidak ada APP_GUARD di app.module.ts"; fi
+log ""; heading "[Middleware]"; MW_COUNT=0; if [ -d src/middleware ]; then find src/middleware -maxdepth 1 -name '*.middleware.ts' 2>/dev/null | sort | while IFS= read -r f; do log "  ✅ $(basename "$f")"; done; MW_COUNT=$(find src/middleware -maxdepth 1 -name '*.middleware.ts' 2>/dev/null | wc -l | tr -d ' '); fi; log "  Total: $MW_COUNT middleware"; log ""
+heading "[Interceptors]"; IC_COUNT=0; if [ -d src/interceptors ]; then find src/interceptors -maxdepth 1 -name '*.interceptor.ts' 2>/dev/null | sort | while IFS= read -r f; do log "  ✅ $(basename "$f")"; done; IC_COUNT=$(find src/interceptors -maxdepth 1 -name '*.interceptor.ts' 2>/dev/null | wc -l | tr -d ' '); [ "$IC_COUNT" -eq 0 ] && warn "src/interceptors/ kosong"; fi; log "  Total: $IC_COUNT interceptor"; log ""
 
-log "[Middleware]"
-MW_COUNT=0
-if [ -d src/middleware ]; then
-  MW_COUNT=$(find src/middleware -maxdepth 1 -name '*.middleware.ts' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$MW_COUNT" -gt 0 ]; then
-    find src/middleware -maxdepth 1 -name '*.middleware.ts' 2>/dev/null | sort | while read -r f; do
-      log "  ✅ $(basename "$f")"
-    done
-  fi
-fi
-log "  Total: $MW_COUNT middleware"
-log ""
-
-log "[Interceptors]"
-IC_COUNT=0
-if [ -d src/interceptors ]; then
-  IC_COUNT=$(find src/interceptors -maxdepth 1 -name '*.interceptor.ts' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$IC_COUNT" -eq 0 ]; then
-    warn "src/interceptors/ kosong — Sprint 2 (idempotency) butuh ini"
-  else
-    find src/interceptors -maxdepth 1 -name '*.interceptor.ts' 2>/dev/null | sort | while read -r f; do
-      log "  ✅ $(basename "$f")"
-    done
-  fi
-fi
-log "  Total: $IC_COUNT interceptor"
-log ""
-
-# ─────────────────────────────────────────────────────
 log_section "8. SHARED — ERROR & TYPES"
-# ─────────────────────────────────────────────────────
-log "[Error Framework]"
-for file in \
-  src/shared/errors/error-codes.ts \
-  src/shared/errors/error-catalog.ts \
-  src/shared/errors/domain-error.ts \
-  src/shared/errors/gateway-error.ts \
-  src/shared/errors/http-exception.filter.ts; do
-  if [ -f "$file" ]; then
-    ok "$file"
-  else
-    fail "$file MISSING"
-  fi
-done
+heading "[Error Framework]"; for file in src/shared/errors/error-codes.ts src/shared/errors/error-catalog.ts src/shared/errors/domain-error.ts src/shared/errors/gateway-error.ts src/shared/errors/http-exception.filter.ts; do [ -f "$file" ] && ok "$file" || fail "$file MISSING"; done
+if [ -f src/shared/errors/error-codes.ts ]; then CODE_COUNT=$(grep -oE 'GW_[A-Z_]+' src/shared/errors/error-codes.ts 2>/dev/null | sort -u | wc -l | tr -d ' '); log "  Total error codes : $CODE_COUNT"; heading "[Error codes per domain]"; for prefix in AUTH RBAC TENANT VALIDATION ROUTE RATE_LIMIT QUOTA IDEMP CIRCUIT BULKHEAD UPSTREAM CACHE INTERNAL OPS RETRY; do COUNT=$(grep -oE "GW_${prefix}[A-Z_]*" src/shared/errors/error-codes.ts 2>/dev/null | sort -u | wc -l | tr -d ' '); [ "$COUNT" -gt 0 ] && log "  GW_${prefix}_* : $COUNT"; done; fi
+log ""; heading "[Shared Types]"; for file in src/shared/types/result.type.ts src/shared/types/option.type.ts src/shared/types/branded.type.ts src/shared/types/repository.port.ts src/shared/types/use-case.port.ts; do [ -f "$file" ] && ok "$file" || warn "$file tidak ada"; done
 log ""
 
-if [ -f src/shared/errors/error-codes.ts ]; then
-  CODE_COUNT=$(grep -oE 'GW_[A-Z_]+' src/shared/errors/error-codes.ts 2>/dev/null | sort -u | wc -l | tr -d ' ')
-  log "  Total error codes : $CODE_COUNT"
-fi
-log ""
-
-log "[Shared Types]"
-for file in \
-  src/shared/types/result.type.ts \
-  src/shared/types/option.type.ts \
-  src/shared/types/branded.type.ts \
-  src/shared/types/repository.port.ts \
-  src/shared/types/use-case.port.ts; do
-  if [ -f "$file" ]; then
-    ok "$file"
-  else
-    warn "$file tidak ada"
-  fi
-done
-log ""
-
-# ─────────────────────────────────────────────────────
 log_section "9. TEST FILES"
-# ─────────────────────────────────────────────────────
-UNIT_TESTS=$(find src test -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-SRC_FILES=$(find src -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-log "  Source .ts (non-test) : $SRC_FILES"
-log "  Test .spec.ts         : $UNIT_TESTS"
-if [ "$SRC_FILES" -gt 0 ]; then
-  RATIO=$((UNIT_TESTS * 100 / SRC_FILES))
-  log "  Ratio test/source     : ${RATIO}%"
-fi
-log ""
-log "[Test per folder]"
-for dir in \
-  src/core src/infrastructure src/modules \
-  src/guards src/middleware src/shared \
-  test/unit test/functional test/security test/e2e; do
-  if [ -d "$dir" ]; then
-    COUNT=$(find "$dir" -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
-    log "  $dir : $COUNT test file"
-  fi
-done
+UNIT_TESTS=$(find src test -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' '); SRC_FILES=$(find src -name '*.ts' -not -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' '); log "  Source .ts (non-test) : $SRC_FILES"; log "  Test .spec.ts         : $UNIT_TESTS"; [ "$SRC_FILES" -gt 0 ] && log "  Ratio test/source     : $((UNIT_TESTS * 100 / SRC_FILES))%"; log ""
+heading "[Test per folder]"; for dir in src/core src/infrastructure src/modules src/guards src/middleware src/shared test; do [ -d "$dir" ] && log "  $dir : $(find "$dir" -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')"; done
 log ""
 
-# ─────────────────────────────────────────────────────
 log_section "10. QUALITY GATES"
-# ─────────────────────────────────────────────────────
-
-log "[Typecheck]"
-if node -e "process.exit(require('./package.json').scripts.typecheck ? 0 : 1)" 2>/dev/null; then
-  if pnpm typecheck >/tmp/tc.out 2>&1; then
-    ok "TypeScript: 0 error"
-  else
-    fail "TypeScript: ada error"
-    log "─── 20 baris pertama ───"
-    head -20 /tmp/tc.out | tee -a "$REPORT"
-  fi
-else
-  warn "Script 'typecheck' tidak ada"
-fi
+if node -e "process.exit(require('./package.json').scripts.typecheck ? 0 : 1)" 2>/dev/null; then pnpm typecheck >/tmp/checkpoint-typecheck.out 2>&1 && ok "TypeScript: 0 error" || { fail "TypeScript: ada error"; head -20 /tmp/checkpoint-typecheck.out | tee -a "$REPORT"; }; else warn "Script 'typecheck' tidak ada"; fi
+if node -e "process.exit(require('./package.json').scripts.lint ? 0 : 1)" 2>/dev/null; then pnpm lint >/tmp/checkpoint-lint.out 2>&1 && ok "Lint: 0 error" || { fail "Lint: ada error"; head -20 /tmp/checkpoint-lint.out | tee -a "$REPORT"; }; else warn "Script 'lint' tidak ada"; fi
+if [ -f .dependency-cruiser.cjs ]; then pnpm deps:check >/tmp/checkpoint-deps.out 2>&1 && ok "Boundary: 0 violation" || { fail "Boundary: ada violation"; head -20 /tmp/checkpoint-deps.out | tee -a "$REPORT"; }; else warn ".dependency-cruiser.cjs tidak ada"; fi
 log ""
 
-log "[Lint]"
-if node -e "process.exit(require('./package.json').scripts.lint ? 0 : 1)" 2>/dev/null; then
-  if pnpm lint >/tmp/lint.out 2>&1; then
-    ok "Lint: 0 error"
-  else
-    fail "Lint: ada error"
-    log "─── 20 baris pertama ───"
-    head -20 /tmp/lint.out | tee -a "$REPORT"
-  fi
-else
-  warn "Script 'lint' tidak ada"
-fi
-log ""
-
-log "[Dependency Boundary]"
-if [ -f .dependency-cruiser.cjs ]; then
-  if pnpm deps:check >/tmp/deps.out 2>&1; then
-    ok "Boundary: 0 violation"
-  else
-    fail "Boundary: ada violation"
-    log "─── 20 baris pertama ───"
-    head -20 /tmp/deps.out | tee -a "$REPORT"
-  fi
-else
-  warn ".dependency-cruiser.cjs tidak ada"
-fi
-log ""
-
-log "[Test]"
-log "  (jalankan manual: pnpm test)"
-[ -f vitest.config.ts ] && log "  vitest.config.ts     : ✅ ada"
-[ -f vitest.config.e2e.ts ] && log "  vitest.config.e2e.ts : ✅ ada"
-log ""
-
-# ─────────────────────────────────────────────────────
 log_section "11. SECURITY SCAN"
-# ─────────────────────────────────────────────────────
-log "[Hardcoded Secrets]"
-SECRET_HITS=$(grep -rEn '(JWT_SECRET|REDIS_PASSWORD|API_KEY|PRIVATE_KEY)\s*=\s*["'"'"'][^"'"'"']{8,}' src/ 2>/dev/null | grep -v '.spec.ts' | grep -v 'process.env' || true)
-if [ -z "$SECRET_HITS" ]; then
-  ok "Tidak ada hardcoded secret di src/"
-else
-  fail "Potensi hardcoded secret:"
-  echo "$SECRET_HITS" | head -10 | tee -a "$REPORT"
-fi
+SECRET_HITS=$(grep -rEn '(JWT_SECRET|REDIS_PASSWORD|API_KEY|PRIVATE_KEY)\s*=\s*["'"'"'][^"'"'"']{8,}' src/ 2>/dev/null | grep -v '.spec.ts' | grep -v 'process.env' || true); [ -z "$SECRET_HITS" ] && ok "Tidak ada hardcoded secret" || { fail "Potensi hardcoded secret:"; printf '%s\n' "$SECRET_HITS" | head -10 | tee -a "$REPORT"; }
+CONSOLE_HITS=$(grep -rn 'console\.log' src/ 2>/dev/null | grep -v '.spec.ts' || true); [ -z "$CONSOLE_HITS" ] && ok "Tidak ada console.log" || warn "$(printf '%s\n' "$CONSOLE_HITS" | wc -l | tr -d ' ') console.log ditemukan"
+ANY_HITS=$(grep -rn ': any' src/ 2>/dev/null | grep -v '.spec.ts' || true); [ -z "$ANY_HITS" ] && ok "Tidak ada 'any'" || warn "$(printf '%s\n' "$ANY_HITS" | wc -l | tr -d ' ') penggunaan 'any'"
+TODO_HITS=$(grep -rnE 'TODO|FIXME' src/ 2>/dev/null | grep -v '.spec.ts' || true); [ -z "$TODO_HITS" ] && ok "Tidak ada TODO/FIXME" || warn "$(printf '%s\n' "$TODO_HITS" | wc -l | tr -d ' ') TODO/FIXME ditemukan"
+LARGE_FILES=$(find src -name '*.ts' -not -name '*.spec.ts' -exec wc -l {} + 2>/dev/null | awk '$1 > 200 && $2 != "total" {print $1 " " $2}' | sort -rn | head -10); [ -z "$LARGE_FILES" ] && ok "Tidak ada file > 200 baris" || { warn "File > 200 baris (top 10):"; printf '%s\n' "$LARGE_FILES" | while IFS= read -r line; do log "  $line"; done; }
+ENV_COMMITTED=$(git ls-files 2>/dev/null | grep -E '^\.env(\.|$)' | grep -v '\.example$\|\.test$' || true); [ -z "$ENV_COMMITTED" ] && ok "Tidak ada .env ter-commit" || { fail ".env ter-commit:"; printf '%s\n' "$ENV_COMMITTED" | tee -a "$REPORT"; }
 log ""
 
-log "[console.log]"
-CONSOLE_HITS=$(grep -rn 'console\.log' src/ 2>/dev/null | grep -v '.spec.ts' || true)
-if [ -z "$CONSOLE_HITS" ]; then
-  ok "Tidak ada console.log di src/"
-else
-  CONSOLE_COUNT=$(printf '%s\n' "$CONSOLE_HITS" | wc -l | tr -d ' ')
-  warn "$CONSOLE_COUNT console.log ditemukan"
-  echo "$CONSOLE_HITS" | head -5 | tee -a "$REPORT"
-fi
+log_section "12. SPRINT READINESS"
+check_env() { grep -q "$1" src/config/env.validation.ts 2>/dev/null && ok "$1" || fail "$1 MISSING"; }
+check_error_code() { grep -q "$1" src/shared/errors/error-codes.ts 2>/dev/null && ok "$1" || fail "$1 MISSING"; }
+heading "[Sprint 2.1 — Idempotency]"; check_error_code GW_IDEMP_CONFLICT; check_error_code GW_IDEMP_IN_PROGRESS; check_env IDEMPOTENCY_LOCK_TTL_SEC; check_env IDEMPOTENCY_REPLAY_TTL_SEC
+heading "[Sprint 2.2 — Circuit Breaker]"; check_error_code GW_CIRCUIT_OPEN; check_env CIRCUIT_FAILURE_THRESHOLD; check_env CIRCUIT_OPEN_TIMEOUT_MS
+heading "[Sprint 2.3 — Retry + Timeout]"; check_error_code GW_UPSTREAM_RETRY_EXHAUSTED; check_env RETRY_MAX_ATTEMPTS; check_env RETRY_TOTAL_TIMEOUT_MS
 log ""
 
-log "['any' usage]"
-ANY_HITS=$(grep -rn ': any' src/ 2>/dev/null | grep -v '.spec.ts' || true)
-if [ -z "$ANY_HITS" ]; then
-  ok "Tidak ada 'any' di src/"
-else
-  ANY_COUNT=$(printf '%s\n' "$ANY_HITS" | wc -l | tr -d ' ')
-  warn "$ANY_COUNT penggunaan 'any'"
-  echo "$ANY_HITS" | head -5 | tee -a "$REPORT"
-fi
-log ""
-
-# ─────────────────────────────────────────────────────
-log_section "12. SPRINT 2.1 — IDEMPOTENCY READINESS"
-# ─────────────────────────────────────────────────────
-log "1. Folder core/idempotency/"
-if [ -d src/core/idempotency ]; then
-  SUBDIRS=$(find src/core/idempotency -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-  FILES=$(find src/core/idempotency -name '*.ts' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$FILES" -eq 0 ]; then
-    log "   🟡 folder ada, $SUBDIRS subfolder, 0 file (stub)"
-  else
-    log "   ✅ folder ada, $SUBDIRS subfolder, $FILES file"
-  fi
-else
-  log "   ❌ folder tidak ada"
-fi
-log ""
-
-log "2. Folder src/interceptors/"
-if [ -d src/interceptors ]; then
-  FILES=$(find src/interceptors -name '*.ts' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$FILES" -eq 0 ]; then
-    log "   🟡 kosong (siap diisi)"
-  else
-    log "   ✅ $FILES file"
-  fi
-else
-  log "   ❌ folder tidak ada"
-fi
-log ""
-
-log "3. Error codes Idempotency"
-for code in GW_IDEMP_INVALID_KEY GW_IDEMP_IN_PROGRESS GW_IDEMP_CONFLICT GW_IDEMP_STORE_UNAVAILABLE; do
-  if grep -q "$code" src/shared/errors/error-codes.ts 2>/dev/null; then
-    log "   ✅ $code"
-  else
-    log "   ❌ $code (perlu ditambah)"
-  fi
-done
-log ""
-
-log "4. Shared constants — headers"
-if [ -f src/shared/constants/headers.ts ]; then
-  log "   ✅ src/shared/constants/headers.ts"
-  if grep -q "IDEMPOTENCY_KEY" src/shared/constants/headers.ts 2>/dev/null; then
-    log "   ✅ IDEMPOTENCY_KEY constant ada"
-  else
-    log "   ❌ IDEMPOTENCY_KEY constant belum ada"
-  fi
-else
-  log "   ❌ src/shared/constants/headers.ts tidak ada"
-fi
-log ""
-
-log "5. Redis module"
-if [ -f src/infrastructure/redis/redis.module.ts ]; then
-  log "   ✅ redis.module.ts ada"
-  if grep -q "REDIS_CLIENT" src/infrastructure/redis/redis.constants.ts 2>/dev/null; then
-    log "   ✅ REDIS_CLIENT symbol ada"
-  fi
-fi
-log ""
-
-log "6. Config env"
-if [ -f src/config/env.validation.ts ]; then
-  log "   ✅ env.validation.ts ada"
-  for env in IDEMPOTENCY_LOCK_TTL_SEC IDEMPOTENCY_REPLAY_TTL_SEC; do
-    if grep -q "$env" src/config/env.validation.ts 2>/dev/null; then
-      log "   ✅ $env"
-    else
-      log "   ❌ $env (perlu ditambah)"
-    fi
-  done
-fi
-log ""
-
-log "7. Test fixtures JWT"
-if [ -f test/fixtures/jwt.fixture.ts ]; then
-  log "   ✅ test/fixtures/jwt.fixture.ts"
-else
-  log "   ⚠️  tidak ada (opsional untuk idempotency)"
-fi
-log ""
-
-# ─────────────────────────────────────────────────────
 log_section "13. RINGKASAN"
-# ─────────────────────────────────────────────────────
-log "Report disimpan di : $REPORT"
-log "Timestamp          : $TIMESTAMP"
-log ""
-log "Cara kirim ke AI:"
-log "  cat $REPORT"
-log ""
-log "Command berikutnya yang mungkin berguna:"
-log "  pnpm test          → jalankan semua test"
-log "  pnpm test:cov      → coverage report"
-log "  pnpm deps:check    → boundary check"
-log "  pnpm dev:up        → nyalakan Redis"
-log ""
-
-echo ""
-echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ CHECKPOINT SELESAI${NC}"
-echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
-echo -e "  Report : ${YELLOW}$REPORT${NC}"
-echo -e "  Size   : $(du -h "$REPORT" 2>/dev/null | cut -f1)"
-echo ""
-echo -e "  Kirim ke AI: ${BLUE}cat $REPORT${NC}"
-echo ""
+SCORE=0; TOTAL=0
+check_score() { TOTAL=$((TOTAL + 1)); [ "$1" = "true" ] && SCORE=$((SCORE + 1)); }
+for file in docs/PRD.md docs/ARCHITECTURE.md docs/STRUCTURE.md docs/TECHSTACK.md docs/RESILIENCE.md AGENTS.md RULES.md CONTRIBUTING.md .dependency-cruiser.cjs .editorconfig .env.example .github/workflows/security.yml; do [ -f "$file" ] && check_score true || check_score false; done
+log "  Dokumentasi & tooling : $SCORE/$TOTAL"; log "  Source files          : $SRC_FILES"; log "  Test files            : $UNIT_TESTS"; log "  Error codes           : ${CODE_COUNT:-0}"; log ""; log "Report disimpan di : $REPORT"; log "Timestamp          : $TIMESTAMP"; log ""; log "Kirim ke AI: cat $REPORT"; log ""
+printf '%b\n' "${GREEN}═══════════════════════════════════════════════${NC}" "${GREEN}  ✅ CHECKPOINT SELESAI${NC}" "${GREEN}═══════════════════════════════════════════════${NC}" "  Report : ${YELLOW}$REPORT${NC}" "  Size   : $(du -h "$REPORT" 2>/dev/null | cut -f1)" ""

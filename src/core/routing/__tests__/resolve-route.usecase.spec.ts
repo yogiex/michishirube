@@ -20,7 +20,12 @@ function makeRoute(over: Partial<Route> = {}): Route {
   };
 }
 
-type MockedRepo = { [K in keyof RouteRepositoryPort]: Mock<RouteRepositoryPort[K]> };
+type MockedRepo = {
+  findAll: Mock<RouteRepositoryPort['findAll']>;
+  reload: Mock<RouteRepositoryPort['reload']>;
+  findByPath?: Mock<NonNullable<RouteRepositoryPort['findByPath']>>;
+  findByTenant?: Mock<NonNullable<RouteRepositoryPort['findByTenant']>>;
+};
 
 function makeRepo(routes: Route[]): MockedRepo {
   return {

@@ -7,6 +7,8 @@ import type { Route } from '../domain/route.entity.js';
 export interface ResolveRouteInput {
   readonly path: string;
   readonly method: string;
+  readonly tenantId?: string;
+  readonly tenant?: string;
 }
 
 export interface ResolvedRoute {
@@ -33,13 +35,31 @@ export class ResolveRouteUseCase {
 
   constructor(@Inject(ROUTE_REPOSITORY) private readonly routes: RouteRepositoryPort) {}
 
+  private allowsTenant(route: Route, tenantId: string | undefined): boolean {
+    if (!tenantId) return true;
+    const allowed: readonly string[] =
+      route.tenantId !== undefined
+        ? [route.tenantId]
+        : (route.tenantIds ?? route.tenants ?? route.allowedTenants ?? []);
+    if (allowed.length === 0) return true;
+    return allowed.includes(tenantId);
+  }
+
   async execute(input: ResolveRouteInput): Promise<ResolvedRoute> {
-    const all = await this.routes.findAll();
     const method = input.method.toUpperCase();
+    const tenantId = input.tenantId ?? input.tenant;
+
+    let source: readonly Route[];
+    if (typeof this.routes.findByPath === 'function') {
+      source = await this.routes.findByPath(input.path, tenantId);
+    } else {
+      source = await this.routes.findAll(tenantId);
+    }
 
     const candidates: Array<{ route: Route; match: PathMatchResult }> = [];
 
-    for (const route of all) {
+    for (const route of source) {
+      if (!this.allowsTenant(route, tenantId)) continue;
       if (route.method !== 'ALL' && route.method !== method) continue;
       const match = matchPath(route.path, input.path);
       if (!match.matched) continue;
@@ -61,8 +81,10 @@ export class ResolveRouteUseCase {
     }
 
     if (!best.route.enabled) {
+      const reason = best.route.disabledReason ?? 'unknown';
       throw new RouteDisabledError(`Route "${best.route.id}" dinonaktifkan`, {
-        meta: { routeId: best.route.id },
+        detail: reason,
+        meta: { routeId: best.route.id, reason },
       });
     }
 

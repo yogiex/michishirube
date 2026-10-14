@@ -34,6 +34,7 @@ function makeRepo(): MockedRepo {
   return {
     findById: vi.fn<TenantRepositoryPort['findById']>(),
     findBySlug: vi.fn<TenantRepositoryPort['findBySlug']>(),
+    listAll: vi.fn<TenantRepositoryPort['listAll']>(),
     reload: vi.fn<TenantRepositoryPort['reload']>(),
   };
 }

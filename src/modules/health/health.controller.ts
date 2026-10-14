@@ -2,9 +2,11 @@ import { Controller, Get, Inject } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, HealthIndicatorResult } from '@nestjs/terminus';
 import { Redis } from 'ioredis';
 import { REDIS_CLIENT } from '@/infrastructure/redis/redis.constants.js';
+import { Public } from '@/shared/decorators/public.decorator.js';
 
 type RedisInstance = InstanceType<typeof Redis>;
 
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(

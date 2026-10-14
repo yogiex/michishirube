@@ -11,15 +11,15 @@
 
 ## 1. Overview
 
-| Sprint       | Fokus                | Durasi   | Status                   |
-| ------------ | -------------------- | -------- | ------------------------ |
-| **Sprint 0** | Foundation           | 1 minggu | ✅ **DONE**              |
-| **Sprint 1** | Core Gateway         | 2 minggu | 🚧 **In Progress** (85%) |
-| **Sprint 2** | Reliability          | 2 minggu | ⏳ Not Started           |
-| **Sprint 3** | Observability        | 2 minggu | ⏳ Not Started           |
-| **Sprint 4** | Advanced             | 2 minggu | ⏳ Not Started           |
-| **Sprint 5** | API Management       | 3 minggu | ⏳ Not Started           |
-| **Sprint 6** | Production Hardening | 2 minggu | ⏳ Not Started           |
+| Sprint       | Fokus                | Durasi   | Status             |
+| ------------ | -------------------- | -------- | ------------------ |
+| **Sprint 0** | Foundation           | 1 minggu | ✅ **DONE**        |
+| **Sprint 1** | Core Gateway         | 2 minggu | ✅ **DONE** (100%) |
+| **Sprint 2** | Reliability          | 2 minggu | ⏳ Not Started     |
+| **Sprint 3** | Observability        | 2 minggu | ⏳ Not Started     |
+| **Sprint 4** | Advanced             | 2 minggu | ⏳ Not Started     |
+| **Sprint 5** | API Management       | 3 minggu | ⏳ Not Started     |
+| **Sprint 6** | Production Hardening | 2 minggu | ⏳ Not Started     |
 
 **Legend:**
 
@@ -64,7 +64,7 @@
 **Tujuan:** Gateway bisa route, auth, limit, dan forward request ke upstream.
 
 **Durasi:** 2 minggu
-**Status:** 85% — 5 dari 6 fitur selesai
+**Status:** 100% — 6 dari 6 fitur selesai
 
 ### 1.1 Tenant Resolution ✅ DONE
 
@@ -83,25 +83,25 @@
 
 ---
 
-### 1.2 Auth Guard JWT ❌ NOT STARTED
+### 1.2 Auth Guard JWT ✅ DONE
 
 **Commit:** —
 **Blocker untuk:** Sprint 2.1 (Idempotency)
 
-| #      | Fitur                      | Deliverable                                     | Status                     |
-| ------ | -------------------------- | ----------------------------------------------- | -------------------------- |
-| 1.2.1  | Principal entity           | `core/auth/domain/principal.entity.ts`          | ✅ (partial)               |
-| 1.2.2  | Role + Scope VO            | `core/auth/domain/role.vo.ts`                   | ✅ (partial)               |
-| 1.2.3  | TokenVerifierPort          | `core/auth/domain/token-verifier.port.ts`       | ❌                         |
-| 1.2.4  | VerifyTokenUseCase         | `core/auth/application/verify-token.usecase.ts` | ❌                         |
-| 1.2.5  | AuthModule                 | `core/auth/auth.module.ts`                      | ❌                         |
-| 1.2.6  | JwksClient                 | `infrastructure/jwt/jwks.client.ts`             | ❌                         |
-| 1.2.7  | JwtVerifierAdapter (jose)  | `infrastructure/jwt/jwt-verifier.adapter.ts`    | ❌                         |
-| 1.2.8  | JWT constants              | `infrastructure/jwt/jwt.constants.ts`           | ❌                         |
-| 1.2.9  | AuthGuard (global)         | `guards/auth.guard.ts`                          | ❌                         |
-| 1.2.10 | `@Public()` decorator      | `shared/decorators/public.decorator.ts`         | ❌                         |
-| 1.2.11 | `@CurrentUser()` decorator | `shared/decorators/current-user.decorator.ts`   | ⚠️ (exists, but not wired) |
-| 1.2.12 | Test: unit + security      | `core/auth/__tests__/*`                         | ❌                         |
+| #      | Fitur                      | Deliverable                                     | Status |
+| ------ | -------------------------- | ----------------------------------------------- | ------ |
+| 1.2.1  | Principal entity           | `core/auth/domain/principal.entity.ts`          | ✅     |
+| 1.2.2  | Role + Scope VO            | `core/auth/domain/role.vo.ts`                   | ✅     |
+| 1.2.3  | TokenVerifierPort          | `core/auth/domain/token-verifier.port.ts`       | ✅     |
+| 1.2.4  | VerifyTokenUseCase         | `core/auth/application/verify-token.usecase.ts` | ✅     |
+| 1.2.5  | AuthModule                 | `core/auth/auth.module.ts`                      | ✅     |
+| 1.2.6  | JwksClient                 | `infrastructure/jwt/jwks.client.ts`             | ✅     |
+| 1.2.7  | JwtVerifierAdapter (jose)  | `infrastructure/jwt/jwt-verifier.adapter.ts`    | ✅     |
+| 1.2.8  | JWT constants              | `infrastructure/jwt/jwt.constants.ts`           | ✅     |
+| 1.2.9  | AuthGuard (global)         | `guards/auth.guard.ts`                          | ✅     |
+| 1.2.10 | `@Public()` decorator      | `shared/decorators/public.decorator.ts`         | ✅     |
+| 1.2.11 | `@CurrentUser()` decorator | `shared/decorators/current-user.decorator.ts`   | ✅     |
+| 1.2.12 | Test: unit + security      | `core/auth/__tests__/*`                         | ✅     |
 
 **Estimasi:** 2-3 hari, ~9 file + ~25 test.
 
@@ -166,21 +166,21 @@
 
 ---
 
-### 1.6 API Key Auth ❌ NOT STARTED
+### 1.6 API Key Auth ✅ DONE
 
 **Commit:** —
 **Blocker untuk:** Sprint 3A (Admin API untuk issue key)
 
 | #     | Fitur                            | Deliverable                                          | Status |
 | ----- | -------------------------------- | ---------------------------------------------------- | ------ |
-| 1.6.1 | ApiKey entity                    | `core/api-key/domain/api-key.entity.ts`              | ❌     |
-| 1.6.2 | ApiKeyRepositoryPort             | `core/api-key/domain/api-key.repository.port.ts`     | ❌     |
-| 1.6.3 | IssueApiKeyUseCase               | `core/api-key/application/issue-api-key.usecase.ts`  | ❌     |
-| 1.6.4 | VerifyApiKeyUseCase              | `core/api-key/application/verify-api-key.usecase.ts` | ❌     |
-| 1.6.5 | RevokeApiKeyUseCase              | `core/api-key/application/revoke-api-key.usecase.ts` | ❌     |
-| 1.6.6 | ListApiKeysUseCase               | `core/api-key/application/list-api-keys.usecase.ts`  | ❌     |
-| 1.6.7 | RedisApiKeyRepository            | `infrastructure/redis/redis-api-key.repository.ts`   | ❌     |
-| 1.6.8 | Support `X-API-Key` di AuthGuard | `guards/auth.guard.ts`                               | ❌     |
+| 1.6.1 | ApiKey entity                    | `core/api-key/domain/api-key.entity.ts`              | ✅     |
+| 1.6.2 | ApiKeyRepositoryPort             | `core/api-key/domain/api-key.repository.port.ts`     | ✅     |
+| 1.6.3 | IssueApiKeyUseCase               | `core/api-key/application/issue-api-key.usecase.ts`  | ✅     |
+| 1.6.4 | VerifyApiKeyUseCase              | `core/api-key/application/verify-api-key.usecase.ts` | ✅     |
+| 1.6.5 | RevokeApiKeyUseCase              | `core/api-key/application/revoke-api-key.usecase.ts` | ✅     |
+| 1.6.6 | ListApiKeysUseCase               | `core/api-key/application/list-api-keys.usecase.ts`  | ✅     |
+| 1.6.7 | RedisApiKeyRepository            | `infrastructure/redis/redis-api-key.repository.ts`   | ✅     |
+| 1.6.8 | Support `X-API-Key` di AuthGuard | `guards/auth.guard.ts`                               | ✅     |
 
 **Estimasi:** 1-2 hari, ~8 file + ~20 test.
 
@@ -193,12 +193,12 @@
 | #         | Fitur                   | Progress | Commit    |
 | --------- | ----------------------- | -------: | --------- |
 | 1.1       | Tenant Resolution       |     100% | `47301ab` |
-| 1.2       | Auth Guard JWT          |   **0%** | —         |
+| 1.2       | Auth Guard JWT          |     100% | —         |
 | 1.3       | RBAC Guard              |     100% | `9832cf3` |
 | 1.4       | Rate Limit              |     100% | `9ee7449` |
 | 1.5       | Dynamic Routing + Proxy |     100% | `f20026b` |
-| 1.6       | API Key Auth            |       0% | —         |
-| **Total** |                         |  **83%** |           |
+| 1.6       | API Key Auth            |     100% | —         |
+| **Total** |                         |     100% |           |
 
 **Sisa:** Sprint 1 #2 (Auth) + #6 (API Key) → ~4-5 hari
 
@@ -412,7 +412,7 @@
 
 ```
 Minggu  1-2   │ Sprint 0 (Foundation)                 ✅ DONE
-Minggu  3-4   │ Sprint 1 (Core Gateway)               🚧 83%
+Minggu  3-4   │ Sprint 1 (Core Gateway)               ✅ 100%
 Minggu  5-6   │ Sprint 2 (Reliability)                ⏳
 Minggu  7-8   │ Sprint 3 (Observability)              ⏳
 Minggu  9-10  │ Sprint 4 (Advanced)                   ⏳
@@ -456,7 +456,7 @@ Minggu 14-15  │ Sprint 6 (Production Hardening)       ⏳
 | Error codes          |       84 |       84 |            ~120 |
 | Core contexts        |        4 |        6 |              10 |
 | Infra adapters       |        3 |        6 |              10 |
-| Guards               |        0 |        2 |               4 |
+| Guards               |        0 |        3 |               4 |
 
 ---
 
