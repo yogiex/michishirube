@@ -1,20 +1,31 @@
 import { createHash } from 'node:crypto';
 import {
-  ConflictException,
   Inject,
   Injectable,
   Logger,
+  Optional,
   UnauthorizedException,
   type CallHandler,
   type ExecutionContext,
   type NestInterceptor,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
-import { finalize, from, map, switchMap, throwError } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, finalize, from, map, switchMap, throwError } from 'rxjs';
+
 import type { Principal } from '@/core/auth/domain/principal.entity.js';
+import { BeginIdempotentRequestUseCase } from '@/core/idempotency/application/begin-idempotent-request.usecase.js';
+import { CompleteIdempotentRequestUseCase } from '@/core/idempotency/application/complete-idempotent-request.usecase.js';
 import { RequestContextHolder } from '@/shared/context/request-context.js';
 import { HEADERS } from '@/shared/constants/headers.js';
+import {
+  DomainError,
+  IdempotencyInProgressError,
+  IdempotencyKeyInvalidError,
+  IdempotencyKeyMissingError,
+  IdempotencyStoreUnavailableError,
+  InternalDependencyError,
+} from '@/shared/errors/index.js';
 import {
   IDEMPOTENT_KEY,
   type IdempotencyOptions,
@@ -67,9 +78,9 @@ interface IdempotentRequest {
 }
 
 interface IdempotentResponse {
-  statusCode: number;
-  body: unknown;
-  headers: Record<string, string>;
+  readonly statusCode: number;
+  readonly body: unknown;
+  readonly headers: Record<string, string>;
 }
 
 interface HttpResponse {
@@ -80,8 +91,9 @@ interface HttpResponse {
 
 const DEFAULT_TTL_SECONDS = 86_400;
 const DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;
-const SAFE_REPLAY_HEADERS = new Set(['content-type', 'cache-control', 'etag', 'location']);
-const FORBIDDEN_REPLAY_HEADERS = new Set([
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const SAFE_REPLAY_HEADERS = new Set<string>(['content-type', 'cache-control', 'etag', 'location']);
+const FORBIDDEN_REPLAY_HEADERS = new Set<string>([
   'authorization',
   'cookie',
   'set-cookie',
@@ -102,12 +114,14 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
   constructor(
     private readonly reflector: Reflector,
-    @Inject(IDEMPOTENCY_STORE) private readonly store: IdempotencyStore,
-    @Inject(IDEMPOTENCY_AUDIT) private readonly audit: IdempotencyAudit,
+    private readonly begin: BeginIdempotentRequestUseCase,
+    private readonly complete: CompleteIdempotentRequestUseCase,
+    @Optional() @Inject(IDEMPOTENCY_AUDIT) private readonly audit?: IdempotencyAudit,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     if (context.getType() !== 'http') return next.handle();
+
     const options = this.reflector.getAllAndOverride<IdempotencyOptions>(IDEMPOTENT_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -117,146 +131,207 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<IdempotentRequest>();
     const response = context.switchToHttp().getResponse<HttpResponse>();
     const tenantId = request.user?.tenantId ?? RequestContextHolder.getTenantId();
+
     if (!tenantId || !request.user) {
       throw new UnauthorizedException('Authenticated tenant is required for idempotent requests');
     }
-    const key = this.getKey(request);
-    const payloadHash = this.hash(
-      JSON.stringify({ method: request.method, path: request.url, body: request.body ?? null }),
-    );
-    const keyHash = this.hash(`${tenantId}:${key}`);
+
+    const rawKey = this.getKey(request);
+
+    const payloadHash = this.hashPayload(request);
+    const scopedKey = this.hash(`${tenantId}:${request.method}:${request.url}:${rawKey}`);
     const ttlSeconds = options.ttlSeconds ?? DEFAULT_TTL_SECONDS;
     const maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
 
-    return from(this.store.claim(keyHash, payloadHash, ttlSeconds)).pipe(
-      switchMap((record) =>
-        this.handleClaim(
-          record,
-          keyHash,
+    return from(
+      this.begin.execute({
+        key: scopedKey,
+        tenantId,
+        requestHash: payloadHash,
+        ttlSeconds,
+      }),
+    ).pipe(
+      switchMap((result) => {
+        if (result.kind === 'replay') {
+          return this.handleReplay(
+            result.response,
+            tenantId,
+            request,
+            payloadHash,
+            scopedKey,
+            response,
+          );
+        }
+        if (result.kind === 'in_progress') {
+          this.auditRecord({
+            action: 'in_progress',
+            keyHash: scopedKey,
+            tenantId,
+            userId: request.user?.userId,
+            payloadHash,
+          });
+          throw new IdempotencyInProgressError('Permintaan idempotent masih diproses', {
+            retryAfter: result.retryAfter,
+          });
+        }
+        return this.execute(
+          next,
+          response,
+          scopedKey,
           payloadHash,
           tenantId,
           request,
-          response,
-          next,
           ttlSeconds,
           maxResponseBytes,
-        ),
-      ),
+        );
+      }),
+      catchError((cause: unknown) => throwError(() => this.toSafeError(cause))),
     );
   }
 
-  private handleClaim(
-    record: IdempotencyRecord | undefined,
-    keyHash: string,
-    payloadHash: string,
+  private handleReplay(
+    stored: unknown,
     tenantId: string,
     request: IdempotentRequest,
+    payloadHash: string,
+    scopedKey: string,
     response: HttpResponse,
-    next: CallHandler,
-    ttlSeconds: number,
-    maxResponseBytes: number,
   ): Observable<unknown> {
-    if (!record)
-      return this.execute(next, keyHash, payloadHash, tenantId, ttlSeconds, maxResponseBytes);
-    if (record.payloadHash !== payloadHash) {
-      return throwError(
-        () => new ConflictException('Idempotency key was used with a different payload'),
-      );
+    const isWrapper =
+      typeof stored === 'object' &&
+      stored !== null &&
+      ('statusCode' in stored || 'headers' in stored || 'body' in stored);
+    const wrapper = isWrapper ? this.extractStoredResponse(stored) : undefined;
+    const statusCode = wrapper?.statusCode ?? 200;
+    const headers = this.safeHeaders(wrapper?.headers);
+    const body = wrapper ? wrapper.body : stored;
+
+    this.setHeaders(response, headers);
+    if (response.statusCode !== undefined) {
+      response.statusCode = statusCode;
+    } else {
+      response.status?.(statusCode);
     }
-    if (record.state === 'in_progress') {
-      return throwError(() => new ConflictException('Idempotent request is still in progress'));
-    }
-    this.setHeaders(response, record.headers ?? {});
-    if (record.statusCode !== undefined) {
-      if (response.statusCode !== undefined) response.statusCode = record.statusCode;
-      else response.status?.(record.statusCode);
-    }
+
     this.auditRecord({
       action: 'replay',
-      keyHash,
+      keyHash: scopedKey,
       tenantId,
       userId: request.user?.userId,
       payloadHash,
-      responseBytes: this.size(record.body),
-      statusCode: record.statusCode,
+      responseBytes: this.size(body),
+      statusCode,
     });
-    return new Observable<unknown>((subscriber) => {
-      subscriber.next(record.body);
-      subscriber.complete();
-    });
+
+    return of(body);
   }
 
   private execute(
     next: CallHandler,
-    keyHash: string,
+    response: HttpResponse,
+    scopedKey: string,
     payloadHash: string,
     tenantId: string,
+    request: IdempotentRequest,
     ttlSeconds: number,
     maxResponseBytes: number,
   ): Observable<unknown> {
     let completed = false;
+
     return next.handle().pipe(
-      map((body) => {
-        const response = this.toResponse(body);
-        const responseBytes = this.size(response.body);
+      map((body: unknown) => {
+        const responseWrapper = this.toResponse(body);
+        const responseBytes = this.size(responseWrapper.body);
+
         if (responseBytes > maxResponseBytes) {
-          this.abortAndAudit(keyHash, payloadHash, tenantId);
+          this.auditRecord({
+            action: 'abort',
+            keyHash: scopedKey,
+            tenantId,
+            userId: request.user?.userId,
+            payloadHash,
+            responseBytes,
+            statusCode: responseWrapper.statusCode,
+          });
           return body;
         }
+
         completed = true;
-        void this.store
-          .complete(
-            keyHash,
-            {
-              state: 'completed',
-              payloadHash,
-              statusCode: response.statusCode,
-              body: response.body,
-              headers: response.headers,
+        void this.complete
+          .execute({
+            key: scopedKey,
+            tenantId,
+            response: {
+              statusCode: responseWrapper.statusCode,
+              headers: responseWrapper.headers,
+              body: responseWrapper.body,
             },
-            ttlSeconds,
-          )
+          })
           .catch((error: unknown) => this.logFailure(error));
+
         this.auditRecord({
           action: 'complete',
-          keyHash,
+          keyHash: scopedKey,
           tenantId,
+          userId: request.user?.userId,
           payloadHash,
           responseBytes,
-          statusCode: response.statusCode,
+          statusCode: responseWrapper.statusCode,
         });
+
         return body;
       }),
       finalize(() => {
-        if (!completed)
-          void this.store.abort(keyHash).catch((error: unknown) => this.logFailure(error));
+        if (!completed) {
+          this.auditRecord({
+            action: 'abort',
+            keyHash: scopedKey,
+            tenantId,
+            userId: request.user?.userId,
+            payloadHash,
+          });
+        }
       }),
     );
   }
 
-  private abortAndAudit(keyHash: string, payloadHash: string, tenantId: string): void {
-    void this.store.abort(keyHash).catch((error: unknown) => this.logFailure(error));
-    this.auditRecord({ action: 'abort', keyHash, tenantId, payloadHash });
+  private getKey(request: IdempotentRequest): string {
+    const rawHeader = request.headers[HEADERS.IDEMPOTENCY_KEY];
+    if (typeof rawHeader !== 'string') {
+      if (rawHeader === undefined) {
+        throw new IdempotencyKeyMissingError('Idempotency-Key header is required');
+      }
+      throw new IdempotencyKeyInvalidError('A valid Idempotency-Key header is required');
+    }
+    if (!IDEMPOTENCY_KEY_PATTERN.test(rawHeader)) {
+      throw new IdempotencyKeyInvalidError('A valid Idempotency-Key header is required');
+    }
+    return rawHeader;
   }
 
-  private getKey(request: IdempotentRequest): string {
-    const raw = request.headers[HEADERS.IDEMPOTENCY_KEY];
-    if (typeof raw !== 'string' || raw.length < 1 || raw.length > 128) {
-      throw new ConflictException('A valid Idempotency-Key header is required');
-    }
-    return raw;
+  private hashPayload(request: IdempotentRequest): string {
+    return this.hash(
+      JSON.stringify({
+        method: request.method,
+        path: request.url,
+        body: request.body ?? null,
+      }),
+    );
   }
 
   private hash(value: string): string {
     return createHash('sha256').update(value).digest('hex');
   }
+
   private size(value: unknown): number {
     const serialized = JSON.stringify(value);
     return serialized === undefined ? 0 : Buffer.byteLength(serialized);
   }
+
   private toResponse(body: unknown): IdempotentResponse {
-    if (typeof body !== 'object' || body === null || !('statusCode' in body))
+    if (typeof body !== 'object' || body === null || !('statusCode' in body)) {
       return { statusCode: 200, body, headers: {} };
+    }
     const value = body as { statusCode?: unknown; body?: unknown; headers?: unknown };
     return {
       statusCode: typeof value.statusCode === 'number' ? value.statusCode : 200,
@@ -264,6 +339,19 @@ export class IdempotencyInterceptor implements NestInterceptor {
       headers: this.safeHeaders(value.headers),
     };
   }
+
+  private extractStoredResponse(
+    stored: unknown,
+  ): { statusCode: number; headers: unknown; body: unknown } | undefined {
+    if (typeof stored !== 'object' || stored === null) return undefined;
+    const value = stored as { statusCode?: unknown; headers?: unknown; body?: unknown };
+    return {
+      statusCode: typeof value.statusCode === 'number' ? value.statusCode : 200,
+      headers: value.headers,
+      body: value.body,
+    };
+  }
+
   private safeHeaders(raw: unknown): Record<string, string> {
     if (typeof raw !== 'object' || raw === null) return {};
     const result: Record<string, string> = {};
@@ -273,20 +361,44 @@ export class IdempotencyInterceptor implements NestInterceptor {
         !SAFE_REPLAY_HEADERS.has(normalized) ||
         FORBIDDEN_REPLAY_HEADERS.has(normalized) ||
         typeof value !== 'string'
-      )
+      ) {
         continue;
+      }
       result[normalized] = value;
     }
     return result;
   }
+
   private setHeaders(response: HttpResponse, headers: Readonly<Record<string, string>>): void {
-    for (const [name, value] of Object.entries(headers)) response.header(name, value);
+    for (const [name, value] of Object.entries(headers)) {
+      response.header(name, value);
+    }
   }
+
   private auditRecord(event: IdempotencyAuditEvent): void {
-    void Promise.resolve(this.audit.record(event)).catch((error: unknown) =>
-      this.logFailure(error),
-    );
+    if (!this.audit) return;
+    try {
+      void Promise.resolve(this.audit.record(event)).catch((error: unknown) =>
+        this.logFailure(error),
+      );
+    } catch (error: unknown) {
+      this.logFailure(error);
+    }
   }
+
+  private toSafeError(cause: unknown): Error {
+    if (cause instanceof DomainError) {
+      this.logger.warn({ err: cause }, 'Idempotency domain error');
+      return cause;
+    }
+    if (cause instanceof Error) {
+      this.logger.error({ err: cause }, 'Unexpected idempotency error');
+      return new IdempotencyStoreUnavailableError('Idempotency store tidak tersedia', { cause });
+    }
+    this.logger.error({ err: cause }, 'Unexpected idempotency error');
+    return new InternalDependencyError('Idempotency dependency unavailable', { cause });
+  }
+
   private logFailure(error: unknown): void {
     this.logger.warn({ err: error }, 'Idempotency operation failed');
   }

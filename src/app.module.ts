@@ -23,6 +23,7 @@ import { RedisOverviewStatsAdapter } from './infrastructure/overview/redis-overv
 import { RedisCircuitInventoryAdapter } from './infrastructure/overview/redis-circuit-inventory.adapter.js';
 import { RedisActivityFeedAdapter } from './infrastructure/overview/redis-activity-feed.adapter.js';
 import { TenantOverviewAdapter } from './infrastructure/overview/tenant-overview.adapter.js';
+import { RedisIdempotencyStoreAdapter } from './infrastructure/idempotency/redis-idempotency-store.adapter.js';
 import { IdempotencyInterceptor } from './interceptors/idempotency.interceptor.js';
 import { StatsInterceptor } from './interceptors/stats.interceptor.js';
 import { CacheInterceptor } from './interceptors/cache.interceptor.js';
@@ -56,7 +57,7 @@ import { AuthGuard } from './guards/auth.guard.js';
     RateLimitModule,
     CircuitBreakerInfrastructureModule,
     BulkheadInfrastructureModule,
-    IdempotencyModule,
+    IdempotencyModule.register({ repository: RedisIdempotencyStoreAdapter }),
     RetryModule,
     ApiKeyModule.register({
       repository: RedisApiKeyRepository,

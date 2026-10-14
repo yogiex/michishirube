@@ -1517,19 +1517,17 @@
                                       children: (0, t.jsxs)('div', {
                                         className: 'flex flex-wrap gap-1',
                                         children: [
-                                          e.scopes
-                                            .slice(0, 2)
-                                            .map((e) =>
-                                              (0, t.jsx)(
-                                                c.Badge,
-                                                {
-                                                  variant: 'secondary',
-                                                  className: 'text-xs',
-                                                  children: e,
-                                                },
-                                                e,
-                                              ),
+                                          e.scopes.slice(0, 2).map((e) =>
+                                            (0, t.jsx)(
+                                              c.Badge,
+                                              {
+                                                variant: 'secondary',
+                                                className: 'text-xs',
+                                                children: e,
+                                              },
+                                              e,
                                             ),
+                                          ),
                                           e.scopes.length > 2 &&
                                             (0, t.jsxs)(c.Badge, {
                                               variant: 'secondary',

@@ -1516,19 +1516,17 @@ module.exports = [
                                       children: (0, b.jsxs)('div', {
                                         className: 'flex flex-wrap gap-1',
                                         children: [
-                                          a.scopes
-                                            .slice(0, 2)
-                                            .map((a) =>
-                                              (0, b.jsx)(
-                                                k.Badge,
-                                                {
-                                                  variant: 'secondary',
-                                                  className: 'text-xs',
-                                                  children: a,
-                                                },
-                                                a,
-                                              ),
+                                          a.scopes.slice(0, 2).map((a) =>
+                                            (0, b.jsx)(
+                                              k.Badge,
+                                              {
+                                                variant: 'secondary',
+                                                className: 'text-xs',
+                                                children: a,
+                                              },
+                                              a,
                                             ),
+                                          ),
                                           a.scopes.length > 2 &&
                                             (0, b.jsxs)(k.Badge, {
                                               variant: 'secondary',
