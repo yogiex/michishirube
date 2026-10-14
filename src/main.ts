@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './shared/errors/index.js';
 
 async function bootstrap(): Promise<void> {
@@ -29,6 +30,29 @@ async function bootstrap(): Promise<void> {
     );
 
   const config = app.get(ConfigService);
+  const nodeEnv = config.get<string>('app.env') ?? process.env.NODE_ENV ?? 'development';
+
+  const swaggerEnabledRaw = process.env.SWAGGER_ENABLED;
+  const swaggerEnabled =
+    swaggerEnabledRaw === undefined
+      ? nodeEnv !== 'production'
+      : swaggerEnabledRaw === 'true' || swaggerEnabledRaw === '1';
+
+  if (swaggerEnabled) {
+    const document = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder()
+        .setTitle('API Gateway')
+        .setDescription(
+          'Internal administrator documentation. Restricted to authorized admins. No secrets or environment values are exposed.',
+        )
+        .setVersion('0.1.0')
+        .addBearerAuth()
+        .build(),
+    );
+    SwaggerModule.setup('docs', app, document);
+  }
+
   const port = config.get<number>('app.port') ?? 3000;
 
   await app.listen(port, '0.0.0.0');

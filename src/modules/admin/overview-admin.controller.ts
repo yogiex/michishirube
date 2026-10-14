@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '@/shared/decorators/roles.decorator.js';
 import { Scopes } from '@/shared/decorators/scopes.decorator.js';
 import { RateLimit } from '@/shared/decorators/rate-limit.decorator.js';
@@ -6,6 +7,8 @@ import { GetOverviewUseCase } from '@/core/overview/application/get-overview.use
 import type { Overview } from '@/core/overview/domain/overview.entity.js';
 
 @Controller('admin/overview')
+@ApiTags('admin', 'overview')
+@ApiBearerAuth()
 @Roles('admin')
 @Scopes('admin:*')
 export class OverviewAdminController {

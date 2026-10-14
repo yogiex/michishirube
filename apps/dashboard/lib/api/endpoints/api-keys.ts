@@ -1,62 +1,121 @@
-import { api, type ApiResult, type RequestOptions } from '../client';
+import { api, ApiError, type ApiResult, type RequestOptions } from '../client';
 import type { ApiKeyListQuery } from '../query-keys';
-import type { PaginatedResponse } from './contracts';
+import {
+  ApiKeySchema,
+  IssueApiKeyInputSchema,
+  IssuedApiKeySchema,
+  type ApiKey,
+  type IssueApiKeyInput,
+  type IssuedApiKey,
+} from '../schemas/api-keys';
+import { PaginatedResponseSchema } from '../schemas/contracts';
+import { z } from 'zod';
 
-export type ApiKeyStatus = 'active' | 'revoked' | 'expired';
+export type { ApiKey, IssueApiKeyInput, IssuedApiKey } from '../schemas/api-keys';
+export type ApiKeyStatus = z.infer<typeof ApiKeySchema.shape.status>;
 
-export interface ApiKey {
-  readonly id: string;
-  readonly name: string;
-  readonly tenantId: string;
-  readonly keyPrefix?: string;
-  readonly scopes: readonly string[];
-  readonly status: ApiKeyStatus;
-  readonly usageCount: number;
-  readonly createdAt: string;
-  readonly expiresAt?: string;
-  readonly lastUsedAt?: string;
-}
-
-export interface IssueApiKeyInput {
-  readonly name: string;
-  readonly tenantId: string;
-  readonly scopes: readonly string[];
-  readonly expiresAt?: string;
-}
-
-export interface IssuedApiKey {
-  readonly apiKey: ApiKey;
-  readonly plaintextKey: string;
-}
+const ApiKeyListSchema = PaginatedResponseSchema(ApiKeySchema);
 
 function apiKeyPath(id?: string): string {
   return id === undefined ? '/admin/api-keys' : `/admin/api-keys/${encodeURIComponent(id)}`;
 }
 
+function malformedError(cause: unknown): ApiError {
+  return new ApiError(
+    500,
+    'GW_FRONTEND_MALFORMED_RESPONSE',
+    'Endpoint api-keys tidak valid',
+    undefined,
+    undefined,
+    { cause: cause instanceof Error ? cause : undefined },
+  );
+}
+
+function parseBody<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T> {
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) throw parsed.error;
+  return parsed.data;
+}
+
+function buildGetOptions(options?: RequestOptions, query?: ApiKeyListQuery): RequestOptions {
+  return { ...options, ...(query !== undefined ? { query: { ...query } } : {}) };
+}
+
 export function listApiKeys(
   query: ApiKeyListQuery = {},
   options?: RequestOptions,
-): Promise<ApiResult<PaginatedResponse<ApiKey>>> {
-  return api.get(apiKeyPath(), { ...options, query: { ...query } }) as Promise<
-    ApiResult<PaginatedResponse<ApiKey>>
-  >;
+): Promise<ApiResult<ApiKey[]>> {
+  return executeListApiKeys(query, options);
+}
+
+async function executeListApiKeys(
+  query: ApiKeyListQuery,
+  options?: RequestOptions,
+): Promise<ApiResult<ApiKey[]>> {
+  const result = await api.get<unknown>(apiKeyPath(), buildGetOptions(options, query));
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedError('API request failed') };
+  const parsed = ApiKeyListSchema.safeParse(result.data);
+  if (!parsed.success) return { ok: false, error: malformedError(parsed.error) };
+  return { ok: true, data: parsed.data.items };
 }
 
 export function getApiKey(id: string, options?: RequestOptions): Promise<ApiResult<ApiKey>> {
-  return api.get(apiKeyPath(id), options) as Promise<ApiResult<ApiKey>>;
+  return executeGetApiKey(id, options);
+}
+
+async function executeGetApiKey(id: string, options?: RequestOptions): Promise<ApiResult<ApiKey>> {
+  const result = await api.get<unknown>(apiKeyPath(id), options);
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedError('API request failed') };
+  const parsed = ApiKeySchema.safeParse(result.data);
+  if (!parsed.success) return { ok: false, error: malformedError(parsed.error) };
+  return { ok: true, data: parsed.data };
 }
 
 export function issueApiKey(
   input: IssueApiKeyInput,
   options?: RequestOptions,
 ): Promise<ApiResult<IssuedApiKey>> {
-  return api.post(apiKeyPath(), input, options) as Promise<ApiResult<IssuedApiKey>>;
+  return executeIssueApiKey(input, options);
+}
+
+async function executeIssueApiKey(
+  input: IssueApiKeyInput,
+  options?: RequestOptions,
+): Promise<ApiResult<IssuedApiKey>> {
+  const validated = parseBody(IssueApiKeyInputSchema, input);
+  const result = await api.post<unknown>(apiKeyPath(), validated, options);
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedError('API request failed') };
+  const parsed = IssuedApiKeySchema.safeParse(result.data);
+  if (!parsed.success) return { ok: false, error: malformedError(parsed.error) };
+  return { ok: true, data: parsed.data };
 }
 
 export function revokeApiKey(id: string, options?: RequestOptions): Promise<ApiResult<ApiKey>> {
-  return api.post(`${apiKeyPath(id)}/revoke`, undefined, options) as Promise<ApiResult<ApiKey>>;
+  return executeRevokeApiKey(id, options);
+}
+
+async function executeRevokeApiKey(
+  id: string,
+  options?: RequestOptions,
+): Promise<ApiResult<ApiKey>> {
+  const result = await api.post<unknown>(`${apiKeyPath(id)}/revoke`, undefined, options);
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedError('API request failed') };
+  const parsed = ApiKeySchema.safeParse(result.data);
+  if (!parsed.success) return { ok: false, error: malformedError(parsed.error) };
+  return { ok: true, data: parsed.data };
 }
 
 export function deleteApiKey(id: string, options?: RequestOptions): Promise<ApiResult<void>> {
-  return api.delete(apiKeyPath(id), options) as Promise<ApiResult<void>>;
+  return executeDeleteApiKey(id, options);
+}
+
+async function executeDeleteApiKey(id: string, options?: RequestOptions): Promise<ApiResult<void>> {
+  const result = await api.delete<unknown>(apiKeyPath(id), options);
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedError('API request failed') };
+  return { ok: true, data: undefined };
 }

@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Logger, Post, Req } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { InvalidateCacheUseCase } from '@/core/cache/application/invalidate-cache.usecase.js';
 import type { Principal } from '@/core/auth/domain/principal.entity.js';
 import { RateLimit, Roles, Scopes } from '@/shared/decorators/index.js';
@@ -24,6 +25,8 @@ function maskTarget(target: string): string {
 }
 
 @Controller('admin/cache')
+@ApiTags('admin', 'cache')
+@ApiBearerAuth()
 @Roles('admin')
 @Scopes('admin:*')
 export class CacheAdminController {

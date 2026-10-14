@@ -55,6 +55,17 @@ export const envSchema = z
     METRICS_ENABLED: z.coerce.boolean().default(true),
     METRICS_TOKEN: z.string().max(256).default(''),
     METRICS_IP_ALLOWLIST: z.string().default(''),
+
+    OTEL_ENABLED: z.coerce.boolean().default(true),
+    OTEL_SERVICE_NAME: z.string().min(1).max(128).optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
+
+    ADMIN_IP_ALLOWLIST: z.string().default(''),
+    TRUSTED_PROXIES: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true' || value === '1'),
   })
   .superRefine((env, context) => {
     if (env.RETRY_MAX_DELAY_MS < env.RETRY_BASE_DELAY_MS) {

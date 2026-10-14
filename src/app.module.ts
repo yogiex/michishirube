@@ -16,6 +16,7 @@ import { CircuitBreakerInfrastructureModule } from './infrastructure/circuit-bre
 import { BulkheadInfrastructureModule } from './infrastructure/bulkhead/bulkhead-infrastructure.module.js';
 import { ApiKeyModule } from './core/api-key/api-key.module.js';
 import { IdempotencyModule } from './core/idempotency/idempotency.module.js';
+import { AuditModule } from './core/audit/audit.module.js';
 import { RetryModule } from './core/retry/retry.module.js';
 import { RateLimitGuard } from './guards/rate-limit.guard.js';
 import { OverviewModule } from './core/overview/overview.module.js';
@@ -24,20 +25,25 @@ import { RedisCircuitInventoryAdapter } from './infrastructure/overview/redis-ci
 import { RedisActivityFeedAdapter } from './infrastructure/overview/redis-activity-feed.adapter.js';
 import { TenantOverviewAdapter } from './infrastructure/overview/tenant-overview.adapter.js';
 import { RedisIdempotencyStoreAdapter } from './infrastructure/idempotency/redis-idempotency-store.adapter.js';
+import { RedisAuditRepository } from './infrastructure/redis/redis-audit.repository.js';
 import { IdempotencyInterceptor } from './interceptors/idempotency.interceptor.js';
 import { StatsInterceptor } from './interceptors/stats.interceptor.js';
 import { CacheInterceptor } from './interceptors/cache.interceptor.js';
 import { CacheInfrastructureModule } from './infrastructure/cache/cache-infrastructure.module.js';
 import { MetricsInfrastructureModule } from './infrastructure/metrics/metrics-infrastructure.module.js';
+import { TracingModule } from './infrastructure/observability/tracing/tracing.module.js';
 import { MiddlewareModule } from './middleware/middleware.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ProxyModule } from './modules/proxy/proxy.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { MetricsModule } from './modules/metrics/metrics.module.js';
 import { MetricsInterceptor } from './interceptors/metrics.interceptor.js';
+import { TracingInterceptor } from './interceptors/tracing.interceptor.js';
 import { JwtInfrastructureModule } from './infrastructure/jwt/jwt-infrastructure.module.js';
 import { AuthModule } from './core/auth/auth.module.js';
 import { AuthGuard } from './guards/auth.guard.js';
+import { RbacGuard } from './guards/rbac.guard.js';
+import { IpAllowlistGuard } from './guards/ip-allowlist.guard.js';
 
 @Module({
   imports: [
@@ -48,6 +54,7 @@ import { AuthGuard } from './guards/auth.guard.js';
     ConfigRepositoryModule,
     CacheInfrastructureModule,
     MetricsInfrastructureModule,
+    TracingModule,
     RbacInfrastructureModule,
     RateLimitInfrastructureModule,
     RequestContextModule,
@@ -58,6 +65,7 @@ import { AuthGuard } from './guards/auth.guard.js';
     CircuitBreakerInfrastructureModule,
     BulkheadInfrastructureModule,
     IdempotencyModule.register({ repository: RedisIdempotencyStoreAdapter }),
+    AuditModule.register({ repository: RedisAuditRepository }),
     RetryModule,
     ApiKeyModule.register({
       repository: RedisApiKeyRepository,
@@ -77,9 +85,12 @@ import { AuthGuard } from './guards/auth.guard.js';
   ],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: RbacGuard },
+    { provide: APP_GUARD, useClass: IpAllowlistGuard },
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheInterceptor },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: TracingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
     { provide: APP_INTERCEPTOR, useClass: StatsInterceptor },
   ],

@@ -68,5 +68,14 @@ export function loadConfig() {
       token: env.METRICS_TOKEN,
       ipAllowlist: env.METRICS_IP_ALLOWLIST,
     },
+    tracing: {
+      enabled: env.OTEL_ENABLED,
+      serviceName: env.OTEL_SERVICE_NAME ?? env.SERVICE_NAME,
+      exporterEndpoint: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    },
+    admin: {
+      ipAllowlist: env.ADMIN_IP_ALLOWLIST,
+      trustedProxies: env.TRUSTED_PROXIES,
+    },
   };
 }
