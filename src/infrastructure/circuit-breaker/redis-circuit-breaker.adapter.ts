@@ -152,7 +152,7 @@ export class RedisCircuitBreakerAdapter implements CircuitBreakerPort, OnModuleI
   private async write(
     circuitKey: string,
     config: CircuitBreakerConfig,
-    state: CircuitState,
+    _state: CircuitState,
   ): Promise<void> {
     const sha = this.sha;
     if (sha !== undefined)

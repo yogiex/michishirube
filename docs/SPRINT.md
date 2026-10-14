@@ -11,15 +11,15 @@
 
 ## 1. Overview
 
-| Sprint       | Fokus                | Durasi   | Status             |
-| ------------ | -------------------- | -------- | ------------------ |
-| **Sprint 0** | Foundation           | 1 minggu | ✅ **DONE**        |
-| **Sprint 1** | Core Gateway         | 2 minggu | ✅ **DONE** (100%) |
-| **Sprint 2** | Reliability          | 2 minggu | ⏳ Not Started     |
-| **Sprint 3** | Observability        | 2 minggu | ⏳ Not Started     |
-| **Sprint 4** | Advanced             | 2 minggu | ⏳ Not Started     |
-| **Sprint 5** | API Management       | 3 minggu | ⏳ Not Started     |
-| **Sprint 6** | Production Hardening | 2 minggu | ⏳ Not Started     |
+| Sprint       | Fokus                | Durasi   | Status                         |
+| ------------ | -------------------- | -------- | ------------------------------ |
+| **Sprint 0** | Foundation           | 1 minggu | ✅ **DONE**                    |
+| **Sprint 1** | Core Gateway         | 2 minggu | ✅ **DONE** (100%)             |
+| **Sprint 2** | Reliability          | 2 minggu | 🚧 In Progress (code complete) |
+| **Sprint 3** | Observability        | 2 minggu | ⏳ Not Started                 |
+| **Sprint 4** | Advanced             | 2 minggu | ⏳ Not Started                 |
+| **Sprint 5** | API Management       | 3 minggu | ⏳ Not Started                 |
+| **Sprint 6** | Production Hardening | 2 minggu | ⏳ Not Started                 |
 
 **Legend:**
 
@@ -204,7 +204,7 @@
 
 ---
 
-## 4. Sprint 2 — Reliability ⏳ NOT STARTED
+## 4. Sprint 2 — Reliability 🚧 IN PROGRESS (CODE COMPLETE)
 
 **Tujuan:** Gateway tahan gagal, cegah duplikasi, cache efisien.
 
@@ -413,7 +413,7 @@
 ```
 Minggu  1-2   │ Sprint 0 (Foundation)                 ✅ DONE
 Minggu  3-4   │ Sprint 1 (Core Gateway)               ✅ 100%
-Minggu  5-6   │ Sprint 2 (Reliability)                ⏳
+Minggu  5-6   │ Sprint 2 (Reliability)                🚧
 Minggu  7-8   │ Sprint 3 (Observability)              ⏳
 Minggu  9-10  │ Sprint 4 (Advanced)                   ⏳
 Minggu 11-13  │ Sprint 5 (API Management)             ⏳

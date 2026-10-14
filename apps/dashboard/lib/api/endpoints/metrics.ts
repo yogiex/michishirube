@@ -1,26 +1,40 @@
-import { api, type ApiResult, type RequestOptions } from '../client';
+import { api, ApiError, type ApiResult, type RequestOptions } from '../client';
 import type { MetricsQuery } from '../query-keys';
+import { MetricsSnapshotSchema, type MetricsSnapshot } from '../schemas/metrics';
 
-export interface MetricPoint {
-  readonly timestamp: string;
-  readonly requests: number;
-  readonly errors: number;
-  readonly p95: number;
-}
+export type { MetricsSnapshot, MetricPoint } from '../schemas/metrics';
 
-export interface MetricsSnapshot {
-  readonly requestsPerMin: number;
-  readonly errorRate: number;
-  readonly p95Latency: number;
-  readonly activeTenants: number;
-  readonly series: readonly MetricPoint[];
+function malformedMetricsError(cause: unknown): ApiError {
+  return new ApiError(
+    500,
+    'GW_FRONTEND_MALFORMED_RESPONSE',
+    'Endpoint metrics tidak valid',
+    undefined,
+    undefined,
+    {
+      cause: cause instanceof Error ? cause : undefined,
+    },
+  );
 }
 
 export function getMetrics(
   query: MetricsQuery = {},
   options?: RequestOptions,
 ): Promise<ApiResult<MetricsSnapshot>> {
-  return api.get('/admin/metrics', { ...options, query: { ...query } }) as Promise<
-    ApiResult<MetricsSnapshot>
-  >;
+  return executeGetMetrics(query, options);
+}
+
+async function executeGetMetrics(
+  query: MetricsQuery,
+  options?: RequestOptions,
+): Promise<ApiResult<MetricsSnapshot>> {
+  const result = await api.get<unknown>('/admin/metrics', {
+    ...options,
+    query: query as Readonly<Record<string, string | number | boolean | undefined>>,
+  });
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedMetricsError('API request failed') };
+  const parsed = MetricsSnapshotSchema.safeParse(result.data);
+  if (!parsed.success) return { ok: false, error: malformedMetricsError(parsed.error) };
+  return { ok: true, data: parsed.data };
 }

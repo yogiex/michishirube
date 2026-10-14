@@ -16,7 +16,10 @@ const api = vi.hoisted(() => ({
   delete: vi.fn(),
 }));
 
-vi.mock('../client', () => ({ api }));
+vi.mock('../client', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...(actual as Record<string, unknown>), api };
+});
 
 beforeEach(() => {
   api.get.mockReset();
@@ -49,8 +52,8 @@ describe('admin API endpoint contracts', () => {
     expect(api.post).toHaveBeenCalledWith('/admin/routes/reload', undefined, undefined);
   });
 
-  it('uses the RFC problem-details-compatible admin overview path', () => {
-    getOverview();
+  it('uses the RFC problem-details-compatible admin overview path', async () => {
+    await getOverview();
     expect(api.get).toHaveBeenCalledWith('/admin/overview', undefined);
   });
 });
