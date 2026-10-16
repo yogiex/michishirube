@@ -77,7 +77,39 @@ function dashboard(){
 const view=state.view.replace('dashboard-','');
 const links=[['dashboard-overview','Overview'],['dashboard-routes','Routes'],['dashboard-tenants','Tenants'],['dashboard-apikeys','API Keys'],['dashboard-metrics','Metrics'],['dashboard-audit','Audit'],['dashboard-settings','Settings']];
 let body='';
-if(view==='overview')body=`<div class="grid stats">${kpis.map(k=>`<div class="stat"><strong>${k.v}</strong><span style="color:var(--muted)">${k.l}</span></div>`).join('')}</div><div class="card"><h3>Gateway Traffic (mock)</h3>${barChart([38,52,49,74,66,84,79,95,88,92])}</div>`; 
+if(view==='overview')body=`
+<div class="grid stats">${kpis.map(k=>`<div class="stat"><strong>${k.v}</strong><span>${k.l}</span></div>`).join('')}</div>
+<div class="overview-grid">
+  <div class="card">
+    <div class="card-head"><h3>Gateway Traffic</h3><span class="badge ok">Live</span></div>
+    ${barChart([38,52,49,74,66,84,79,95,88,92,97,91])}
+    <div class="chart-legend"><span>12:00</span><span>12:06</span><span>Now</span></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>System Health</h3><span class="badge ok">Operational</span></div>
+    <ul class="health">
+      <li><span>Authentication</span><span class="badge ok">99.99%</span></li>
+      <li><span>Routing</span><span class="badge ok">99.98%</span></li>
+      <li><span>Redis state</span><span class="badge ok">connected</span></li>
+      <li><span>Circuit breakers</span><span class="badge warn">1 half-open</span></li>
+      <li><span>Idempotency</span><span class="badge ok">healthy</span></li>
+    </ul>
+  </div>
+</div>
+<div class="overview-grid">
+  <div class="card">
+    <div class="card-head"><h3>Top Routes</h3><span class="muted">last 15 min</span></div>
+    <ul class="route-list">${[['/api/v1/orders','order-svc',86],['/api/v1/users/:id','user-svc',64],['/api/v1/payments','pay-svc',48],['/api/v1/notifications','notify-svc',31]].map(r=>`<li><div class="route-meta"><strong>${r[0]}</strong><span>${r[1]}</span></div><div class="progress"><i style="width:${r[2]}%"></i></div><small>${r[2]}%</small></li>`).join('')}</ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Live Activity</h3><span class="badge ok">streaming</span></div>
+    <ul class="activity">${[['route.updated','/pay → pay-svc','2s'],['apikey.issued','ci-pipeline','14s'],['quota.exceeded','tenant globex · 429','41s'],['circuit.open','pay-svc','1m'],['cache.purge','tenant acme','2m']].map(a=>`<li><span class="activity-dot"></span><div><strong>${a[0]}</strong><span>${a[1]}</span></div><em>${a[2]}</em></li>`).join('')}</ul>
+  </div>
+</div>
+<div class="card quick">
+  <div class="card-head"><h3>Quick actions</h3></div>
+  <div class="toolbar"><button class="btn" onclick="setView('dashboard-routes');openModal()">Add route</button><button class="btn ghost" onclick="setView('dashboard-apikeys')">Issue API key</button><button class="btn ghost" onclick="setView('dashboard-audit')">View audit</button><button class="btn ghost" onclick="toast('Runbook opened (mock)')">Open runbook</button></div>
+</div>`; 
 else if(view==='routes'){const f=state.routes.filter(r=>r.p.includes(state.query));body=`<div class="toolbar"><input placeholder="search route" value="${state.query}" oninput="state.query=this.value;render()" /><button class="btn" onclick="openModal()">Tambah Route</button></div><div class="card"><table><thead><tr><th>Path</th><th>Method</th><th>Upstream</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${f.map((r,i)=>`<tr><td>${r.p}</td><td>${r.m}</td><td>${r.u}</td><td><span class="badge ${r.s==='active'?'ok':'warn'}">${r.s}</span></td><td><button class="btn ghost" onclick="openModal(${i})">Edit</button> <button class="btn ghost" onclick="deleteRoute(${i})">Hapus</button></td></tr>`).join('')}</tbody></table></div>`;} 
 else if(view==='tenants')body=`<div class="card"><p>dengan filter demo: platform, acme-corp, globex</p><input placeholder="search tenant" oninput="toast('tenant search: '+this.value)"/></div>`; 
 else if(view==='apikeys')body=`<div class="card"><table><thead><tr><th>Name</th><th>Prefix</th><th>Status</th></tr></thead><tbody>${state.apikeys.map(k=>`<tr><td>${k.n}</td><td>${k.p}</td><td>${k.s}</td></tr>`).join('')}</tbody></table><button class="btn" onclick="toast('API key issued (mock)')">Issue Key</button></div>`; 
