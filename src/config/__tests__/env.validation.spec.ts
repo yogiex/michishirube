@@ -18,9 +18,33 @@ describe('env.validation', () => {
       REDIS_PASSWORD: 'secret',
       JWKS_URI: 'https://auth.example.com/.well-known/jwks.json',
       LOG_LEVEL: 'info',
+      METRICS_TOKEN: 'a'.repeat(32),
     });
     expect(env.NODE_ENV).toBe('production');
     expect(env.PORT).toBe(8080);
+  });
+
+  it('rejects production without metrics credential', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'production',
+        REDIS_PASSWORD: 'secret',
+        JWKS_URI: 'https://auth.example.com/.well-known/jwks.json',
+        LOG_LEVEL: 'info',
+      }),
+    ).toThrow('METRICS_TOKEN atau METRICS_IP_ALLOWLIST wajib di production');
+  });
+
+  it('rejects short metrics token in production', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'production',
+        REDIS_PASSWORD: 'secret',
+        JWKS_URI: 'https://auth.example.com/.well-known/jwks.json',
+        LOG_LEVEL: 'info',
+        METRICS_TOKEN: 'short',
+      }),
+    ).toThrow('METRICS_TOKEN minimal 32 karakter di production');
   });
 
   it('throws on invalid NODE_ENV', () => {

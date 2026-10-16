@@ -1,25 +1,41 @@
-import { api, type ApiResult, type RequestOptions } from '../client';
+import { api, ApiError, type ApiResult, type RequestOptions } from '../client';
 import type { AuditListQuery } from '../query-keys';
-import type { PaginatedResponse } from './contracts';
+import { AuditEntrySchema, type AuditEntry } from '../schemas/audit';
+import { PaginatedResponseSchema } from '../schemas/contracts';
 
-export type AuditStatus = 'success' | 'warning' | 'error';
+export type { AuditEntry } from '../schemas/audit';
+export type AuditStatus = AuditEntry['status'];
 
-export interface AuditEntry {
-  readonly id: string;
-  readonly timestamp: string;
-  readonly actor: string;
-  readonly action: string;
-  readonly target: string;
-  readonly status: AuditStatus;
-  readonly metadata?: Readonly<Record<string, unknown>>;
+const AuditListSchema = PaginatedResponseSchema(AuditEntrySchema);
+
+function malformedError(cause: unknown): ApiError {
+  return new ApiError(
+    500,
+    'GW_FRONTEND_MALFORMED_RESPONSE',
+    'Endpoint audit tidak valid',
+    undefined,
+    undefined,
+    {
+      cause: cause instanceof Error ? cause : undefined,
+    },
+  );
 }
 
 export function listAuditEntries(
   query: AuditListQuery = {},
   options?: RequestOptions,
-): Promise<ApiResult<PaginatedResponse<AuditEntry>>> {
-  return api.get('/admin/audit', {
-    ...options,
-    query: { ...query },
-  }) as Promise<ApiResult<PaginatedResponse<AuditEntry>>>;
+): Promise<ApiResult<AuditEntry[]>> {
+  return executeListAuditEntries(query, options);
+}
+
+async function executeListAuditEntries(
+  query: AuditListQuery,
+  options?: RequestOptions,
+): Promise<ApiResult<AuditEntry[]>> {
+  const result = await api.get<unknown>('/admin/audit', { ...options, query: { ...query } });
+  if (!result || !result.ok)
+    return result ?? { ok: false, error: malformedError('API request failed') };
+  const parsed = AuditListSchema.safeParse(result.data);
+  if (!parsed.success) return { ok: false, error: malformedError(parsed.error) };
+  return { ok: true, data: parsed.data.items };
 }

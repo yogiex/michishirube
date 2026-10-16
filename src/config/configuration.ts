@@ -27,6 +27,12 @@ export function loadConfig() {
       ttl: env.RATE_LIMIT_TTL,
       max: env.RATE_LIMIT_MAX,
     },
+    cache: {
+      ttlSec: env.CACHE_TTL_SEC,
+      maxBodySize: env.CACHE_MAX_BODY_SIZE,
+      staleWhileRevalidateSec: env.CACHE_STALE_WHILE_REVALIDATE_SEC,
+      staleIfErrorSec: env.CACHE_STALE_IF_ERROR_SEC,
+    },
     retry: {
       maxRetries: env.RETRY_MAX_RETRIES,
       baseDelayMs: env.RETRY_BASE_DELAY_MS,
@@ -56,6 +62,20 @@ export function loadConfig() {
     upstream: {
       auth: env.SERVICE_AUTH_URL,
       order: env.SERVICE_ORDER_URL,
+    },
+    metrics: {
+      enabled: env.METRICS_ENABLED,
+      token: env.METRICS_TOKEN,
+      ipAllowlist: env.METRICS_IP_ALLOWLIST,
+    },
+    tracing: {
+      enabled: env.OTEL_ENABLED,
+      serviceName: env.OTEL_SERVICE_NAME ?? env.SERVICE_NAME,
+      exporterEndpoint: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    },
+    admin: {
+      ipAllowlist: env.ADMIN_IP_ALLOWLIST,
+      trustedProxies: env.TRUSTED_PROXIES,
     },
   };
 }

@@ -15,7 +15,7 @@ interface SessionClaims extends AuthUser {
 
 export const SESSION_COOKIE_NAME = 'michishirube-session';
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
-export const REMEMBERED_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+export const REMEMBERED_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 
 function getSessionSecret(): string {
   const secret = process.env.DASHBOARD_SESSION_SECRET;

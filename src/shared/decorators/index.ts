@@ -5,3 +5,4 @@ export * from './roles.decorator.js';
 export * from './scopes.decorator.js';
 export * from './permissions.decorator.js';
 export * from './rate-limit.decorator.js';
+export * from './cacheable.decorator.js';

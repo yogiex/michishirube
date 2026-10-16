@@ -15,6 +15,7 @@ import {
 } from '@/shared/security/header-sanitizer.js';
 import { assertSafeUpstream } from '@/shared/security/ssrf-guard.js';
 import { RequestContextHolder } from '@/shared/context/request-context.js';
+import { isValidTraceparent } from '@/interceptors/tracing.interceptor.js';
 import {
   InternalError,
   UpstreamConnectFailedError,
@@ -54,9 +55,11 @@ export class ProxyService {
   ) {}
 
   async handle(input: ProxyInput): Promise<ProxyOutput> {
+    const ctx = RequestContextHolder.get();
     const { route, wildcard } = await this.resolveRoute.execute({
       path: input.path,
       method: input.method,
+      tenantId: ctx?.tenantId,
     });
 
     const upstreamUrl = this.buildUpstreamUrl(route, input, wildcard);
@@ -70,12 +73,18 @@ export class ProxyService {
       });
     }
 
-    const ctx = RequestContextHolder.get();
     const overrides: Record<string, string> = {
       'x-request-id': ctx?.requestId ?? 'unknown',
     };
     if (ctx?.tenantId) overrides['x-tenant-id'] = ctx.tenantId;
     if (ctx?.userId) overrides['x-user-id'] = ctx.userId;
+
+    const incomingTraceparent = Array.isArray(input.headers.traceparent)
+      ? input.headers.traceparent[0]
+      : input.headers.traceparent;
+    if (isValidTraceparent(incomingTraceparent)) {
+      overrides.traceparent = incomingTraceparent.trim();
+    }
 
     const headers = sanitizeRequestHeaders(input.headers, overrides);
 

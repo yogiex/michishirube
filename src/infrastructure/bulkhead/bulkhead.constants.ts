@@ -1,5 +1,7 @@
 export const BULKHEAD = Symbol('BULKHEAD');
 
+export const BULKHEAD_ADAPTER_OPTIONS = Symbol('BULKHEAD_ADAPTER_OPTIONS');
+
 export const BULKHEAD_DEFAULTS = Object.freeze({
   maxKeys: 10_000,
   idleTtlMs: 60_000,

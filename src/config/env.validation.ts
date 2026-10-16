@@ -20,6 +20,11 @@ export const envSchema = z
     RATE_LIMIT_TTL: z.coerce.number().int().positive().default(60),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1000),
 
+    CACHE_TTL_SEC: z.coerce.number().int().min(1).max(3600).default(60),
+    CACHE_MAX_BODY_SIZE: z.coerce.number().int().min(1024).max(10_485_760).default(1_048_576),
+    CACHE_STALE_WHILE_REVALIDATE_SEC: z.coerce.number().int().min(0).max(3600).default(0),
+    CACHE_STALE_IF_ERROR_SEC: z.coerce.number().int().min(0).max(3600).default(0),
+
     RETRY_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(2),
     RETRY_BASE_DELAY_MS: z.coerce.number().int().min(1).max(3_600_000).default(100),
     RETRY_MAX_DELAY_MS: z.coerce.number().int().min(1).max(3_600_000).default(2_000),
@@ -46,6 +51,21 @@ export const envSchema = z
 
     SERVICE_AUTH_URL: z.string().url().default('http://localhost:4001'),
     SERVICE_ORDER_URL: z.string().url().default('http://localhost:4002'),
+
+    METRICS_ENABLED: z.coerce.boolean().default(true),
+    METRICS_TOKEN: z.string().max(256).default(''),
+    METRICS_IP_ALLOWLIST: z.string().default(''),
+
+    OTEL_ENABLED: z.coerce.boolean().default(true),
+    OTEL_SERVICE_NAME: z.string().min(1).max(128).optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
+
+    ADMIN_IP_ALLOWLIST: z.string().default(''),
+    TRUSTED_PROXIES: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true' || value === '1'),
   })
   .superRefine((env, context) => {
     if (env.RETRY_MAX_DELAY_MS < env.RETRY_BASE_DELAY_MS) {
@@ -76,6 +96,16 @@ export function validateEnv(config: Record<string, unknown>): Env {
     ];
     if (forbidden.some(Boolean)) {
       throw new Error('Production config tidak boleh pakai nilai development');
+    }
+    if (
+      parsed.data.METRICS_ENABLED &&
+      parsed.data.METRICS_TOKEN === '' &&
+      parsed.data.METRICS_IP_ALLOWLIST === ''
+    ) {
+      throw new Error('METRICS_TOKEN atau METRICS_IP_ALLOWLIST wajib di production');
+    }
+    if (parsed.data.METRICS_TOKEN !== '' && parsed.data.METRICS_TOKEN.length < 32) {
+      throw new Error('METRICS_TOKEN minimal 32 karakter di production');
     }
   }
 

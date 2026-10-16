@@ -76,6 +76,10 @@ export class YamlTenantRepository implements TenantRepositoryPort, OnModuleInit 
     return found ? some(found) : none();
   }
 
+  async listAll(): Promise<readonly Tenant[]> {
+    return [...this.byId.values()];
+  }
+
   private async readSource(abs: string): Promise<string> {
     try {
       return await readFile(abs, 'utf8');

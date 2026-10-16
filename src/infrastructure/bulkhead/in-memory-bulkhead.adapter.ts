@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationShutdown, Optional } from '@nestjs/common';
 import type {
   BulkheadConfig,
   BulkheadLease,
@@ -9,6 +9,7 @@ import {
   InternalMaintenanceError,
 } from '@/shared/errors/index.js';
 import {
+  BULKHEAD_ADAPTER_OPTIONS,
   BULKHEAD_DEFAULTS,
   BULKHEAD_KEY_MAX_LENGTH,
   BULKHEAD_KEY_MIN_LENGTH,
@@ -56,7 +57,11 @@ export class InMemoryBulkheadAdapter implements OnApplicationShutdown {
   private destroyed = false;
   private nextLeaseId = 1;
 
-  constructor(options: InMemoryBulkheadOptions = {}) {
+  constructor(
+    @Optional()
+    @Inject(BULKHEAD_ADAPTER_OPTIONS)
+    options: InMemoryBulkheadOptions = {},
+  ) {
     this.maxKeys = options.maxKeys ?? BULKHEAD_DEFAULTS.maxKeys;
     this.idleTtlMs = options.idleTtlMs ?? BULKHEAD_DEFAULTS.idleTtlMs;
     this.now = options.now ?? Date.now;

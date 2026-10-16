@@ -22,6 +22,8 @@ const INTERNAL_HEADERS = new Set([
   'x-user-id',
   'x-api-key',
   'content-length',
+  'traceparent',
+  'tracestate',
 ]);
 
 const RESPONSE_BLOCKLIST = new Set([

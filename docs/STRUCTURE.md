@@ -193,6 +193,7 @@ michishirube/
 │   │   │
 │   │   ├── jwt/
 │   │   │   ├── jwt.constants.ts
+│   │   │   ├── jwt-infrastructure.module.ts
 │   │   │   ├── jwks.client.ts            # createRemoteJWKSet
 │   │   │   ├── jwt-verifier.adapter.ts   # jose + JWKS
 │   │   │   └── __tests__/
