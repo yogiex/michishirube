@@ -14,10 +14,63 @@ function themeClass(){document.body.classList.toggle('theme-light',state.theme==
 themeClass();
 function landing(){
 return `<div class="wrap">
-<header class="hero"><div><div class="badge">Enterprise API Gateway</div><h1 class="grad">Michishirube<br/>Command Center</h1><p>Monitor routes, tenants, API keys, audit trails, and reliability metrics in one premium dashboard. Built for teams shipping high-traffic gateways.</p><div class="cta"><button class="btn" onclick="setView('login')">Enter Dashboard</button><button class="btn ghost" onclick="toast('Documentation index available in /docs')">View Docs</button></div></div><div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:.7rem"><strong>Live Gateway</strong><span class="badge ok">Healthy</span></div><div class="grid stats">${kpis.map(k=>`<div class="stat"><strong>${k.v}</strong><span style="color:var(--muted)">${k.l}</span></div>`).join('')}</div>${barChart([42,68,55,90,74,88,96])}</div></header>
-<section><h2>Why teams choose Michishirube</h2><div class="grid features">${[['Hexagonal Core','Ports/adapters keep business rules clean.'],['Resilience Stack','Circuit breaker, retry, bulkhead, cache, idempotency.'],['Secure by Design','Zod validation, signed sessions, sanitized headers.'],['Observable','Prometheus metrics, tracing, audit feed.']].map(f=>`<div class="card feature"><h3>${f[0]}</h3><p style="color:var(--muted)">${f[1]}</p></div>`).join('')}</div></section>
-<section><h2>Pricing</h2><div class="pricing"><div class="card price"><h3>Starter</h3><strong>$0</strong><p style="color:var(--muted)">Core gateway + dashboard demo</p><button class="btn ghost" onclick="setView('login')">Start</button></div><div class="card price"><h3>Pro</h3><strong>$49</strong><p style="color:var(--muted)">Advanced observability features</p><button class="btn" onclick="setView('login')">Start</button></div><div class="card price"><h3>Enterprise</h3><strong>Custom</strong><p style="color:var(--muted)">SLA and support</p><button class="btn ghost" onclick="toast('Contact sales coming soon')">Contact</button></div></div></section>
-<footer class="footer">© Michishirube • Premium API Gateway Mockup on GitHub Pages • <a href="./docs/ARCHITECTURE.md" style="color:var(--accent2)">Docs</a></footer>
+<nav class="topnav"><strong class="wordmark">Michishirube</strong><div class="topnav-links"><a href="#features">Features</a><a href="#flow">Architecture</a><a href="#pricing">Pricing</a><a href="./docs/ARCHITECTURE.md">Docs</a></div><button class="btn" onclick="setView('login')">Open Console</button></nav>
+<header class="hero"><div>
+  <div class="badge">⚡ Enterprise Multi-Tenant API Gateway</div>
+  <h1 class="grad">One gateway.<br/>Every request secured,<br/>routed, and observed.</h1>
+  <p>Michishirube sits in front of your microservices and centralizes auth, tenancy, rate limiting, idempotency, circuit breaking, caching, and observability — so your teams only ship business logic.</p>
+  <div class="cta"><button class="btn" onclick="setView('login')">Open Live Console</button><button class="btn ghost" onclick="toast('Docs at /docs/ARCHITECTURE.md')">Read Architecture</button></div>
+  <div class="logos"><span>Built for</span><b>NestJS</b><b>Fastify</b><b>Redis</b><b>OpenTelemetry</b><b>Prometheus</b><b>JWT / JWKS</b></div>
+</div>
+<div class="card terminal">
+  <div class="terminal-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><em>gateway · live</em></div>
+  <pre><code><span class="c-key">$</span> curl https://api.michishirube.dev/api/v1/orders \\
+  <span class="c-flag">-H</span> <span class="c-str">"Authorization: Bearer &lt;jwt&gt;"</span> \\
+  <span class="c-flag">-H</span> <span class="c-str">"X-Tenant-Id: acme"</span> \\
+  <span class="c-flag">-H</span> <span class="c-str">"Idempotency-Key: 7f9a..."</span>
+
+<span class="c-ok">✓ jwt</span>     verified · rs256 · jwks
+<span class="c-ok">✓ tenant</span>  acme · policy applied
+<span class="c-ok">✓ quota</span>   4 821 / 5 000 rpm
+<span class="c-ok">✓ route</span>   /orders → order-svc
+<span class="c-ok">200 OK</span>   <span class="c-muted">38ms · trace 4bf9…e21</span></code></pre>
+</div>
+</header>
+
+<section class="stats-strip">
+  ${kpis.map(k=>`<div class="stat"><strong>${k.v}</strong><span>${k.l}</span></div>`).join('')}
+  <div class="stat"><strong>&lt;10ms</strong><span>Gateway overhead</span></div>
+</section>
+
+<section id="flow">
+  <h2>Every request, handled in order.</h2>
+  <p class="section-lead">Cross-cutting concerns run before a single byte reaches your upstream.</p>
+  <div class="flow">${[['01','Edge &amp; TLS','WAF, load balancer, request ID'],['02','Auth &amp; RBAC','JWT via JWKS or hashed API key'],['03','Tenant Resolve','JWT claim → subdomain → header'],['04','Rate Limit','Redis sliding window per tenant'],['05','Idempotency','SET NX lock + cached response'],['06','Circuit Breaker','Closed → Open → Half-Open'],['07','Proxy','Retry, timeout, header sanitize'],['08','Observe','Metrics, traces, audit feed']].map(s=>`<div class="step"><span class="step-num">${s[0]}</span><h3>${s[1]}</h3><p>${s[2]}</p></div>`).join('')}</div>
+</section>
+
+<section id="features">
+  <h2>Why teams pick Michishirube</h2>
+  <div class="grid features">${[['Centralized Auth','RS256/ES256 JWT via JWKS plus hashed API keys for partners — no duplicated auth per service.'],['Reliability Stack','Sliding-window rate limit, idempotent writes, circuit breaker, retry with jitter, and Redis cache.'],['Tenant Isolation','Every cache, quota, and idempotency key is prefixed by a validated tenant.'],['Observability','Prometheus metrics, OpenTelemetry tracing, and structured audit events out of the box.'],['Configurable Routing','YAML + Redis route config, reloadable without restart, HTTP and gRPC upstreams.'],['Secure by Default','Zod validation, header sanitization, SSRF guard, fail-closed policies.'],['Stateless Scale','No local state — scale horizontally to N instances behind any edge.'],['OpenAPI Contract','Stable, documented API with standardized RFC 7807 error responses.']].map(f=>`<div class="card feature"><h3>${f[0]}</h3><p>${f[1]}</p></div>`).join('')}</div>
+</section>
+
+<section>
+  <h2>Operational metrics that matter</h2>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem"><strong>Requests / second (mock)</strong><span class="badge ok">Healthy</span></div>
+    ${barChart([38,52,49,74,66,84,79,95,88,92,97,91])}
+  </div>
+</section>
+
+<section id="pricing">
+  <h2>Pricing</h2>
+  <div class="pricing">
+    <div class="card price"><h3>Starter</h3><strong>$0</strong><p>Single tenant, core gateway, basic metrics.</p><ul class="price-list"><li>JWT &amp; API key auth</li><li>Rate limiting</li><li>Community support</li></ul><button class="btn ghost" onclick="setView('login')">Start</button></div>
+    <div class="card price featured"><span class="badge">Most popular</span><h3>Pro</h3><strong>$49</strong><p>Multi-tenant with the full resilience stack.</p><ul class="price-list"><li>Idempotency &amp; cache</li><li>Circuit breaker &amp; retry</li><li>Tracing + audit</li><li>Email support</li></ul><button class="btn" onclick="setView('login')">Start</button></div>
+    <div class="card price"><h3>Enterprise</h3><strong>Custom</strong><p>Scale, compliance, and hands-on support.</p><ul class="price-list"><li>Multi-region</li><li>SSO &amp; custom policy</li><li>SLA 99.95%+</li><li>Dedicated engineer</li></ul><button class="btn ghost" onclick="toast('Contact sales coming soon')">Contact</button></div>
+  </div>
+</section>
+
+<footer class="footer">© Michishirube • Enterprise API Gateway mockup • <a href="./docs/ARCHITECTURE.md">Architecture</a> · <a href="./docs/PRD.md">PRD</a> · <a href="./docs/FRONTEND-API-CONTRACT.md">API Contract</a></footer>
 </div>`;}
 function loginView(){return `<div class="wrap" style="max-width:420px;margin:8rem auto"><div class="card"><h2>Login Admin</h2><form onsubmit="login(event)" style="display:grid;gap:.8rem"><label>Email<input required type="email" value="admin@michishirube.local"/></label><label>Password<input required type="password" value="demo-password"/></label><button class="btn" style="width:100%">Masuk</button></form><p style="color:var(--muted);font-size:.85rem;margin-top:.8rem">Mock auth only.</p></div></div>`;}
 function dashboard(){
